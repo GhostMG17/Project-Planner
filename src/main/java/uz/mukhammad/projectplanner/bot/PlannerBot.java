@@ -7,6 +7,9 @@ import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateC
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import uz.mukhammad.projectplanner.user.RegistrationResult;
+import uz.mukhammad.projectplanner.user.User;
+import uz.mukhammad.projectplanner.user.UserService;
 
 @Slf4j
 @Component
@@ -15,6 +18,7 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
 
     private final MessageSender messageSender;
     private final TopicService topicService;
+    private final UserService userService;
 
     @Override
     public void consume(Update update) {
@@ -68,11 +72,28 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
 
         String command = extractCommand(message.getText());
         switch (command) {
-            case "/start" -> messageSender.reply(message,
-                    "Hi! I'm Project Planner bot. Use /help to see available commands.");
+            case "/start" -> handleStart(message);
             case "/createtopic" -> handleCreateTopic(message);
             default -> { }
         }
+    }
+
+    private void handleStart(Message message){
+        if (!message.getChat().isUserChat()){
+            messageSender.reply(message,
+                    "Please open a private chat with me and press /start to register.");
+            return;
+        }
+
+        var from = message.getFrom();
+        RegistrationResult result = userService.registerOrUpdate(
+                from.getId(), from.getUserName(), from.getFirstName(), from.getLastName());
+
+        User user = result.user();
+        String text = result.created()
+                ? "Welcome, " + user.getFirstName() + "! You're registered as " + user.getRole() +"."
+                : "Welcome back, " + user.getFirstName() + "! Your role: " + user.getRole() + ".";
+        messageSender.reply(message,text);
     }
 
 }
