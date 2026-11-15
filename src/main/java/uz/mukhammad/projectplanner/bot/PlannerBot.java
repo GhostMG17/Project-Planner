@@ -18,23 +18,10 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
 
     @Override
     public void consume(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) {
-            return;
-        }
-        Message message = update.getMessage();
-
-        log.info("chatId={}, threadId={}, userId={}, text={}",
-                message.getChatId(),
-                message.getMessageThreadId(),
-                message.getFrom().getId(),
-                message.getText());
-
-        String command = extractCommand(message.getText());
-        switch (command) {
-            case "/start" -> messageSender.reply(message,
-                    "Hi! I'm Project Planner bot. Use /help to see available commands.");
-            case "/createtopic" -> handleCreateTopic(message);
-            default -> { }
+        try {
+            handleUpdate(update);
+        } catch (Exception e) {
+            log.error("Unhandled error while processing update {}", update.getUpdateId(), e);
         }
     }
 
@@ -64,6 +51,27 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
         } catch (TelegramApiException e) {
             log.error("Failed to create topic '{}' in chat {}", name, message.getChatId(), e);
             messageSender.reply(message, "Could not create topic. Check that I'm an admin with 'Manage Topics' permission.");
+        }
+    }
+
+
+    private void handleUpdate(Update update) {
+        if (!update.hasMessage() || !update.getMessage().hasText()) {
+            return;
+        }
+        Message message = update.getMessage();
+
+        Long userId = message.getFrom() != null ? message.getFrom().getId() : null;
+
+        log.info("chatId={}, threadId={}, userId={}, text={}",
+                message.getChatId(), message.getMessageThreadId(), userId, message.getText());
+
+        String command = extractCommand(message.getText());
+        switch (command) {
+            case "/start" -> messageSender.reply(message,
+                    "Hi! I'm Project Planner bot. Use /help to see available commands.");
+            case "/createtopic" -> handleCreateTopic(message);
+            default -> { }
         }
     }
 
