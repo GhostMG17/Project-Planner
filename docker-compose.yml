@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: planner-db
+    environment:
+      POSTGRES_DB: planner
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Tashkent
+    ports:
+      - "5434:5432"
+    volumes:
+      - planner-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  planner-db-data:
