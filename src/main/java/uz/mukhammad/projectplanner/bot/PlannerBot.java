@@ -1,24 +1,33 @@
 package uz.mukhammad.projectplanner.bot;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import uz.mukhammad.projectplanner.user.RegistrationResult;
-import uz.mukhammad.projectplanner.user.User;
-import uz.mukhammad.projectplanner.user.UserService;
+import uz.mukhammad.projectplanner.command.CommandHandler;
+import uz.mukhammad.projectplanner.common.BotException;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
 
     private final MessageSender messageSender;
-    private final TopicService topicService;
-    private final UserService userService;
+    private final BotProperties botProperties;
+    private final Map<String, CommandHandler> handlers;
+
+    public PlannerBot(MessageSender messageSender, BotProperties botProperties,
+                      List<CommandHandler> handlerList) {
+        this.messageSender = messageSender;
+        this.botProperties = botProperties;
+        this.handlers = handlerList.stream()
+                .collect(Collectors.toMap(CommandHandler::command, h -> h));
+        log.info("Registered commands: {}", handlers.keySet());
+    }
 
     @Override
     public void consume(Update update) {
@@ -29,71 +38,40 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 
-    private String extractCommand(String text) {
-        String first = text.split("\\s+")[0];
-        return first.split("@")[0];
-    }
-
-    private void handleCreateTopic(Message message) {
-        if (!Boolean.TRUE.equals(message.getChat().getIsForum())) {
-            messageSender.reply(message, "This command works only in a group with Topics enabled.");
-            return;
-        }
-
-        String[] parts = message.getText().split("\\s+", 2);
-        if (parts.length < 2 || parts[1].isBlank()) {
-            messageSender.reply(message, "Usage: /createtopic <name>");
-            return;
-        }
-        String name = parts[1].trim();
-
-        try {
-            Integer threadId = topicService.createTopic(message.getChatId(), name);
-            messageSender.send(message.getChatId(), threadId,
-                    "Topic \"" + name + "\" is ready. Project updates will appear here.");
-            messageSender.reply(message, "Topic created: " + name);
-        } catch (TelegramApiException e) {
-            log.error("Failed to create topic '{}' in chat {}", name, message.getChatId(), e);
-            messageSender.reply(message, "Could not create topic. Check that I'm an admin with 'Manage Topics' permission.");
-        }
-    }
-
-
     private void handleUpdate(Update update) {
         if (!update.hasMessage() || !update.getMessage().hasText()) {
             return;
         }
         Message message = update.getMessage();
-
         Long userId = message.getFrom() != null ? message.getFrom().getId() : null;
-
         log.info("chatId={}, threadId={}, userId={}, text={}",
                 message.getChatId(), message.getMessageThreadId(), userId, message.getText());
 
-        String command = extractCommand(message.getText());
-        switch (command) {
-            case "/start" -> handleStart(message);
-            case "/createtopic" -> handleCreateTopic(message);
-            default -> { }
-        }
-    }
-
-    private void handleStart(Message message){
-        if (!message.getChat().isUserChat()){
-            messageSender.reply(message,
-                    "Please open a private chat with me and press /start to register.");
+        String text = message.getText().trim();
+        if (!text.startsWith("/") || message.getFrom() == null) {
             return;
         }
 
-        var from = message.getFrom();
-        RegistrationResult result = userService.registerOrUpdate(
-                from.getId(), from.getUserName(), from.getFirstName(), from.getLastName());
+        String firstWord = text.split("\\s+")[0];
+        String[] parts = firstWord.split("@", 2);
+        String command = parts[0].toLowerCase();
 
-        User user = result.user();
-        String text = result.created()
-                ? "Welcome, " + user.getFirstName() + "! You're registered as " + user.getRole() +"."
-                : "Welcome back, " + user.getFirstName() + "! Your role: " + user.getRole() + ".";
-        messageSender.reply(message,text);
+        if (parts.length == 2 && !parts[1].equalsIgnoreCase(botProperties.username())) {
+            return;
+        }
+
+        CommandHandler handler = handlers.get(command);
+        if (handler == null) {
+            if (message.getChat().isUserChat()) {
+                messageSender.reply(message, "Unknown command. Use /help to see available commands.");
+            }
+            return;
+        }
+
+        try {
+            handler.handle(message);
+        } catch (BotException e) {
+            messageSender.reply(message, e.getMessage());
+        }
     }
-
 }
