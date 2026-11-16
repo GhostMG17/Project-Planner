@@ -275,13 +275,15 @@ public class ProjectService {
         return p;
     }
 
+    public boolean isOnTeam(Project project, User user) {
+        return project.getProjectManager().getId().equals(user.getId())
+                || memberRepository.existsByProjectAndUser(project, user);
+    }
+
     private String requireMaxLength(String value, int max, String fieldName) {
         if (value.length() > max) {
             throw new BotException(fieldName + " is too long (max " + max + " characters).");
         }
         return value;
     }
-
-
-
 }
