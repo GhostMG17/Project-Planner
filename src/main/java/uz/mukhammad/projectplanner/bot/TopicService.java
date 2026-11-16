@@ -3,6 +3,7 @@ package uz.mukhammad.projectplanner.bot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.telegram.telegrambots.meta.api.methods.forum.CloseForumTopic;
 import org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic;
 import org.telegram.telegrambots.meta.api.methods.forum.DeleteForumTopic;
 import org.telegram.telegrambots.meta.api.objects.forum.ForumTopic;
@@ -47,6 +48,18 @@ public class TopicService {
             log.info("Topic deleted: chatId={}, threadId={}", chatId, threadId);
         } catch (TelegramApiException e) {
             log.error("Failed to delete topic {} in chat {}", threadId, chatId, e);
+        }
+    }
+
+    public void closeTopicQuietly(Long chatId, Integer threadId) {
+        try {
+            telegramClient.execute(CloseForumTopic.builder()
+                    .chatId(chatId)
+                    .messageThreadId(threadId)
+                    .build());
+            log.info("Topic closed: chatId={}, threadId={}", chatId, threadId);
+        } catch (TelegramApiException e) {
+            log.error("Failed to close topic {} in chat {}", threadId, chatId, e);
         }
     }
 

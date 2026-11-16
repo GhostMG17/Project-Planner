@@ -8,8 +8,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import uz.mukhammad.projectplanner.bot.BotProperties;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TopicService;
+import uz.mukhammad.projectplanner.bot.view.ProjectView;
 import uz.mukhammad.projectplanner.common.BotException;
-import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.project_member.ProjectMember;
 import uz.mukhammad.projectplanner.project_member.ProjectMemberRepository;
 import uz.mukhammad.projectplanner.user.Role;
@@ -27,6 +27,7 @@ public class ProjectService {
 
     private static final Pattern CODE_PATTERN = Pattern.compile("^[A-Z0-9]{2,10}$");
     private final ProjectRepository projectRepository;
+    private final ProjectView projectView;
     private final ProjectMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final UserService userService;
@@ -86,7 +87,7 @@ public class ProjectService {
         log.info("Project created: code={}, id={}, pm={}, by={}",
                 code, project.getId(), pm.getTelegramId(), creator.getTelegramId());
 
-        messageSender.send(chatId, threadId, formatCard(project));
+        messageSender.send(chatId, threadId, projectView.card(project), projectView.cardKeyboard(project, true));
         return project;
     }
 
@@ -106,13 +107,46 @@ public class ProjectService {
                         "Project " + code + " not found. Use /projects to see available projects."));
     }
 
-    public void requireCanManage(User actor, Project project) {
-        boolean allowed = actor.getRole() == Role.ADMIN
+    public boolean canManage(User actor, Project project) {
+        return actor.getRole() == Role.ADMIN
                 || actor.getRole() == Role.PORTFOLIO_LEAD
                 || project.getProjectManager().getId().equals(actor.getId());
-        if (!allowed) {
+    }
+
+    public void requireCanManage(User actor, Project project) {
+        if (!canManage(actor, project)) {
             throw new BotException("Only the PM of " + project.getCode() + " or Portfolio Lead can do this.");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Project getById(Long id) {
+        return projectRepository.findWithPmById(id)
+                .orElseThrow(() -> new BotException("Project not found."));
+    }
+
+    @Transactional
+    public Project closeProject(User actor, Long projectId) {
+        Project project = getById(projectId);
+        requireCanManage(actor, project);
+        if (project.getStatus() != ProjectStatus.ACTIVE && project.getStatus() != ProjectStatus.ON_HOLD) {
+            throw new BotException("Project " + project.getCode() + " is already " + project.getStatus() + ".");
+        }
+        project.setStatus(ProjectStatus.COMPLETED);
+        log.info("Project closed: {} by {}", project.getCode(), actor.getTelegramId());
+        return project;
+    }
+
+    @Transactional
+    public Project archiveProject(User actor, Long projectId) {
+        Project project = getById(projectId);
+        requireCanManage(actor, project);
+        if (project.getStatus() == ProjectStatus.ARCHIVED) {
+            throw new BotException("Project " + project.getCode() + " is already archived.");
+        }
+        project.setStatus(ProjectStatus.ARCHIVED);
+        log.info("Project archived: {} by {}", project.getCode(), actor.getTelegramId());
+        return project;
     }
 
     public void requireCanView(User actor, Project project) {
@@ -196,17 +230,6 @@ public class ProjectService {
                 .map(ProjectMember::getUser)
                 .toList();
         return new ProjectTeam(project, members);
-    }
-
-
-    private String formatCard(Project p) {
-        User pm = p.getProjectManager();
-        return "📁 " + p.getCode() + " · " + p.getName() + "\n\n"
-                + "Client: " + p.getClient() + "\n"
-                + "PM: " + pm.getDisplayName() + (pm.getUsername() != null ? " (@" + pm.getUsername() + ")" : "") + "\n"
-                + "Period: " + p.getStartDate().format(DateParser.FORMAT)
-                + " → " + p.getPlannedEndDate().format(DateParser.FORMAT) + "\n"
-                + "Status: " + p.getStatus();
     }
 
 }

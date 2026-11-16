@@ -3,8 +3,10 @@ package uz.mukhammad.projectplanner.bot;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
+import uz.mukhammad.projectplanner.bot.command.CallbackHandler;
 import uz.mukhammad.projectplanner.bot.command.CommandHandler;
 import uz.mukhammad.projectplanner.common.BotException;
 
@@ -19,14 +21,17 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
     private final MessageSender messageSender;
     private final BotProperties botProperties;
     private final Map<String, CommandHandler> handlers;
+    private final Map<String, CallbackHandler> callbackHandlers;
 
     public PlannerBot(MessageSender messageSender, BotProperties botProperties,
-                      List<CommandHandler> handlerList) {
+                      List<CommandHandler> handlerList, List<CallbackHandler> callbackList) {
         this.messageSender = messageSender;
         this.botProperties = botProperties;
         this.handlers = handlerList.stream()
                 .collect(Collectors.toMap(CommandHandler::command, h -> h));
-        log.info("Registered commands: {}", handlers.keySet());
+        this.callbackHandlers = callbackList.stream()
+                .collect(Collectors.toMap(CallbackHandler::prefix, h -> h));
+        log.info("Registered commands: {}, callbacks: {}", handlers.keySet(), callbackHandlers.keySet());
     }
 
     @Override
@@ -39,7 +44,8 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
     }
 
     private void handleUpdate(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) {
+        if (update.hasCallbackQuery()) {
+            handleCallback(update.getCallbackQuery());
             return;
         }
         Message message = update.getMessage();
@@ -74,4 +80,27 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
             messageSender.reply(message, e.getMessage());
         }
     }
+
+
+    private void handleCallback(CallbackQuery cq) {
+        String data = cq.getData();
+        log.info("callback: userId={}, data={}", cq.getFrom().getId(), data);
+
+        CallbackHandler handler = data == null ? null : callbackHandlers.get(data.split(":", 2)[0]);
+        if (handler == null) {
+            messageSender.answerCallback(cq.getId(), "Unknown action.", false);
+            return;
+        }
+
+        try {
+            handler.handle(cq);
+            messageSender.answerCallback(cq.getId(), null, false);
+        } catch (BotException e) {
+            messageSender.answerCallback(cq.getId(), e.getMessage(), true);
+        } catch (RuntimeException e) {
+            log.error("Callback failed: data={}", data, e);
+            messageSender.answerCallback(cq.getId(), "Something went wrong. Try again later.", true);
+        }
+    }
+
 }

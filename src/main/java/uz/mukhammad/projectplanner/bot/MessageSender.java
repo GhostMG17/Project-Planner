@@ -3,8 +3,11 @@ package uz.mukhammad.projectplanner.bot;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -16,10 +19,15 @@ public class MessageSender {
     private final TelegramClient telegramClient;
 
     public void send(Long chatId, Integer threadId, String text) {
+        send(chatId, threadId, text, null);
+    }
+
+    public void send(Long chatId, Integer threadId, String text, InlineKeyboardMarkup keyboard) {
         SendMessage sendMessage = SendMessage.builder()
                 .chatId(chatId)
                 .messageThreadId(threadId)
                 .text(text)
+                .replyMarkup(keyboard)
                 .build();
         try {
             telegramClient.execute(sendMessage);
@@ -29,7 +37,41 @@ public class MessageSender {
     }
 
     public void reply(Message message, String text) {
+        reply(message, text, null);
+    }
+
+    public void reply(Message message, String text, InlineKeyboardMarkup keyboard) {
         Integer threadId = message.isTopicMessage() ? message.getMessageThreadId() : null;
-        send(message.getChatId(), threadId, text);
+        send(message.getChatId(), threadId, text, keyboard);
+    }
+
+    public void edit(Long chatId, Integer messageId, String text, InlineKeyboardMarkup keyboard) {
+        EditMessageText edit = EditMessageText.builder()
+                .chatId(chatId)
+                .messageId(messageId)
+                .text(text)
+                .replyMarkup(keyboard)
+                .build();
+        try {
+            telegramClient.execute(edit);
+        } catch (TelegramApiException e) {
+            if (e.getMessage() != null && e.getMessage().contains("message is not modified")) {
+                return;
+            }
+            log.error("Failed to edit message {} in chat {}", messageId, chatId, e);
+        }
+    }
+
+    public void answerCallback(String callbackQueryId, String text, boolean alert) {
+        AnswerCallbackQuery answer = AnswerCallbackQuery.builder()
+                .callbackQueryId(callbackQueryId)
+                .text(text)
+                .showAlert(alert)
+                .build();
+        try {
+            telegramClient.execute(answer);
+        } catch (TelegramApiException e) {
+            log.error("Failed to answer callback {}", callbackQueryId, e);
+        }
     }
 }
