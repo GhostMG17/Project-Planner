@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.command;
+package uz.mukhammad.projectplanner.bot.command;
 
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 

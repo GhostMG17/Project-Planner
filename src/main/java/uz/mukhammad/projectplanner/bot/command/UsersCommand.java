@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.command;
+package uz.mukhammad.projectplanner.bot.command;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
