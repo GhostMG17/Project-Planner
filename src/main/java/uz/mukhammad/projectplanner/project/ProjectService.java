@@ -10,6 +10,7 @@ import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TopicService;
 import uz.mukhammad.projectplanner.bot.view.ProjectView;
 import uz.mukhammad.projectplanner.common.BotException;
+import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.project_member.ProjectMember;
 import uz.mukhammad.projectplanner.project_member.ProjectMemberRepository;
 import uz.mukhammad.projectplanner.user.Role;
@@ -17,6 +18,7 @@ import uz.mukhammad.projectplanner.user.User;
 import uz.mukhammad.projectplanner.user.UserRepository;
 import uz.mukhammad.projectplanner.user.UserService;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -231,5 +233,55 @@ public class ProjectService {
                 .toList();
         return new ProjectTeam(project, members);
     }
+
+
+    @Transactional
+    public Project updateField(User actor, Long projectId, ProjectField field, String rawValue) {
+        Project p = getById(projectId);
+        requireCanManage(actor, p);
+        if (p.getStatus() == ProjectStatus.ARCHIVED) {
+            throw new BotException("Archived project can't be edited.");
+        }
+
+        String value = rawValue == null ? "" : rawValue.trim();
+        if (value.isEmpty()) {
+            throw new BotException("Value can't be empty.");
+        }
+
+        switch (field) {
+            case NAME -> p.setName(requireMaxLength(value, 200, "Name"));
+            case CLIENT -> p.setClient(requireMaxLength(value, 200, "Client"));
+            case DESCRIPTION -> p.setDescription(requireMaxLength(value, 2000, "Description"));
+            case DELIVERABLES -> p.setKeyDeliverables(requireMaxLength(value, 2000, "Key deliverables"));
+            case START_DATE -> {
+                LocalDate start = DateParser.parse(value, "start date");
+                if (start.isAfter(p.getPlannedEndDate())) {
+                    throw new BotException("Start date can't be after end date ("
+                            + p.getPlannedEndDate().format(DateParser.FORMAT) + ").");
+                }
+                p.setStartDate(start);
+            }
+            case END_DATE -> {
+                LocalDate end = DateParser.parse(value, "end date");
+                if (end.isBefore(p.getStartDate())) {
+                    throw new BotException("End date can't be before start date ("
+                            + p.getStartDate().format(DateParser.FORMAT) + ").");
+                }
+                p.setPlannedEndDate(end);
+            }
+        }
+
+        log.info("Project {} field {} updated by {}", p.getCode(), field, actor.getTelegramId());
+        return p;
+    }
+
+    private String requireMaxLength(String value, int max, String fieldName) {
+        if (value.length() > max) {
+            throw new BotException(fieldName + " is too long (max " + max + " characters).");
+        }
+        return value;
+    }
+
+
 
 }

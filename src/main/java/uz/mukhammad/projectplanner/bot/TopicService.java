@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.methods.forum.CloseForumTopic;
 import org.telegram.telegrambots.meta.api.methods.forum.CreateForumTopic;
 import org.telegram.telegrambots.meta.api.methods.forum.DeleteForumTopic;
+import org.telegram.telegrambots.meta.api.methods.forum.EditForumTopic;
 import org.telegram.telegrambots.meta.api.objects.forum.ForumTopic;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
@@ -60,6 +61,23 @@ public class TopicService {
             log.info("Topic closed: chatId={}, threadId={}", chatId, threadId);
         } catch (TelegramApiException e) {
             log.error("Failed to close topic {} in chat {}", threadId, chatId, e);
+        }
+    }
+
+
+    public void renameTopicQuietly(Long chatId, Integer threadId, String name) {
+        String topicName = name.length() > MAX_TOPIC_NAME_LENGTH
+                ? name.substring(0, MAX_TOPIC_NAME_LENGTH)
+                : name;
+        try {
+            telegramClient.execute(EditForumTopic.builder()
+                    .chatId(chatId)
+                    .messageThreadId(threadId)
+                    .name(topicName)
+                    .build());
+            log.info("Topic renamed: chatId={}, threadId={}, name={}", chatId, threadId, topicName);
+        } catch (TelegramApiException e) {
+            log.error("Failed to rename topic {} in chat {}", threadId, chatId, e);
         }
     }
 

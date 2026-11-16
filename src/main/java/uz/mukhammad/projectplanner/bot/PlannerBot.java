@@ -8,10 +8,15 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.command.CallbackHandler;
 import uz.mukhammad.projectplanner.bot.command.CommandHandler;
+import uz.mukhammad.projectplanner.bot.conversation.ConversationKey;
+import uz.mukhammad.projectplanner.bot.conversation.ConversationState;
+import uz.mukhammad.projectplanner.bot.conversation.ConversationStore;
+import uz.mukhammad.projectplanner.bot.conversation.InputHandler;
 import uz.mukhammad.projectplanner.common.BotException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -20,18 +25,28 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
 
     private final MessageSender messageSender;
     private final BotProperties botProperties;
+    private final ConversationStore conversationStore;
     private final Map<String, CommandHandler> handlers;
     private final Map<String, CallbackHandler> callbackHandlers;
+    private final Map<String, InputHandler> inputHandlers;
 
-    public PlannerBot(MessageSender messageSender, BotProperties botProperties,
-                      List<CommandHandler> handlerList, List<CallbackHandler> callbackList) {
+    public PlannerBot(MessageSender messageSender,
+                      BotProperties botProperties,
+                      ConversationStore conversationStore,
+                      List<CommandHandler> handlerList,
+                      List<CallbackHandler> callbackList,
+                      List<InputHandler> inputList) {
         this.messageSender = messageSender;
         this.botProperties = botProperties;
+        this.conversationStore = conversationStore;
         this.handlers = handlerList.stream()
                 .collect(Collectors.toMap(CommandHandler::command, h -> h));
         this.callbackHandlers = callbackList.stream()
                 .collect(Collectors.toMap(CallbackHandler::prefix, h -> h));
-        log.info("Registered commands: {}, callbacks: {}", handlers.keySet(), callbackHandlers.keySet());
+        this.inputHandlers = inputList.stream()
+                .collect(Collectors.toMap(InputHandler::name, h -> h));
+        log.info("Registered commands: {}, callbacks: {}, inputs: {}",
+                handlers.keySet(), callbackHandlers.keySet(), inputHandlers.keySet());
     }
 
     @Override
@@ -48,13 +63,24 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
             handleCallback(update.getCallbackQuery());
             return;
         }
+
+        if (!update.hasMessage() || !update.getMessage().hasText()) {
+            return;
+        }
         Message message = update.getMessage();
         Long userId = message.getFrom() != null ? message.getFrom().getId() : null;
         log.info("chatId={}, threadId={}, userId={}, text={}",
                 message.getChatId(), message.getMessageThreadId(), userId, message.getText());
 
+        if (message.getFrom() == null) {
+            return;
+        }
+
         String text = message.getText().trim();
-        if (!text.startsWith("/") || message.getFrom() == null) {
+        ConversationKey key = new ConversationKey(message.getChatId(), message.getFrom().getId());
+
+        if (!text.startsWith("/")) {
+            handleInput(message, key);
             return;
         }
 
@@ -65,6 +91,8 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
         if (parts.length == 2 && !parts[1].equalsIgnoreCase(botProperties.username())) {
             return;
         }
+
+        conversationStore.clear(key);
 
         CommandHandler handler = handlers.get(command);
         if (handler == null) {
@@ -81,6 +109,24 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 
+    private void handleInput(Message message, ConversationKey key) {
+        Optional<ConversationState> state = conversationStore.get(key);
+        if (state.isEmpty()) {
+            return; // обычная переписка в группе — не нам
+        }
+
+        InputHandler handler = inputHandlers.get(state.get().handler());
+        if (handler == null) {
+            conversationStore.clear(key);
+            return;
+        }
+
+        try {
+            handler.handle(message, state.get());
+        } catch (BotException e) {
+            messageSender.reply(message, e.getMessage() + "\n\nTry again or send /cancel.");
+        }
+    }
 
     private void handleCallback(CallbackQuery cq) {
         String data = cq.getData();
@@ -102,5 +148,4 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
             messageSender.answerCallback(cq.getId(), "Something went wrong. Try again later.", true);
         }
     }
-
 }

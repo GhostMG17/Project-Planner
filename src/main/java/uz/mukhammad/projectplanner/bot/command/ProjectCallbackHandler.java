@@ -5,11 +5,12 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TopicService;
+import uz.mukhammad.projectplanner.bot.conversation.ConversationKey;
+import uz.mukhammad.projectplanner.bot.conversation.ConversationStore;
+import uz.mukhammad.projectplanner.bot.conversation.ProjectEditInputHandler;
 import uz.mukhammad.projectplanner.bot.view.ProjectView;
 import uz.mukhammad.projectplanner.common.BotException;
-import uz.mukhammad.projectplanner.project.Project;
-import uz.mukhammad.projectplanner.project.ProjectService;
-import uz.mukhammad.projectplanner.project.ProjectTeam;
+import uz.mukhammad.projectplanner.project.*;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 
@@ -22,6 +23,7 @@ public class ProjectCallbackHandler implements CallbackHandler {
     private final ProjectView projectView;
     private final MessageSender messageSender;
     private final TopicService topicService;
+    private final ConversationStore conversationStore;
 
     @Override
     public String prefix() {
@@ -43,6 +45,7 @@ public class ProjectCallbackHandler implements CallbackHandler {
 
         switch (action) {
             case "card" -> {
+                conversationStore.clear(new ConversationKey(chatId, cq.getFrom().getId()));
                 Project p = projectService.getById(projectId);
                 projectService.requireCanView(actor, p);
                 messageSender.edit(chatId, messageId, projectView.card(p),
@@ -82,8 +85,37 @@ public class ProjectCallbackHandler implements CallbackHandler {
                         "🗄 Project archived by " + actor.getDisplayName() + ". This topic is now closed.");
                 topicService.closeTopicQuietly(p.getTelegramChatId(), p.getTelegramThreadId());
             }
-            default -> throw new BotException("Unknown action.");
+            case "edit" -> {
+                Project p = projectService.getById(projectId);
+                projectService.requireCanManage(actor, p);
+                messageSender.edit(chatId, messageId,
+                        "✏️ What do you want to edit in " + p.getCode() + "?",
+                        projectView.editMenuKeyboard(p));
+            }
+            default -> {
+                if (action.startsWith("edit_")) {
+                    startEdit(cq, actor, projectId, action.substring("edit_".length()), chatId, messageId);
+                } else {
+                    throw new BotException("Unknown action.");
+                }
+            }
         }
+    }
+
+
+    private void startEdit(CallbackQuery cq, User actor, Long projectId, String fieldKey,
+                           Long chatId, Integer messageId) {
+        ProjectField field = ProjectField.fromKey(fieldKey);
+        Project p = projectService.getById(projectId);
+        projectService.requireCanManage(actor, p);
+        if (p.getStatus() == ProjectStatus.ARCHIVED) {
+            throw new BotException("Archived project can't be edited.");
+        }
+
+        conversationStore.start(new ConversationKey(chatId, cq.getFrom().getId()),
+                ProjectEditInputHandler.NAME, field.name(), projectId);
+
+        messageSender.edit(chatId, messageId, projectView.editPrompt(p, field), projectView.cancelKeyboard(p));
     }
 
     private Long parseId(String raw) {
