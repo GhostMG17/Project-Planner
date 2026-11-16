@@ -76,4 +76,17 @@ public class UserService {
     }
 
 
+    @Transactional(readOnly = true)
+    public User getByUsername(String raw) {
+        String username = raw.trim().replace("@", "");
+        User user = userRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new BotException(
+                        "User @" + username + " not found. They must press /start in private chat first."));
+        if (!user.isActive()) {
+            throw new BotException("User @" + username + " is deactivated.");
+        }
+        return user;
+    }
+
+
 }

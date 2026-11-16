@@ -10,9 +10,12 @@ import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TopicService;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.common.DateParser;
+import uz.mukhammad.projectplanner.project_member.ProjectMember;
+import uz.mukhammad.projectplanner.project_member.ProjectMemberRepository;
 import uz.mukhammad.projectplanner.user.Role;
 import uz.mukhammad.projectplanner.user.User;
 import uz.mukhammad.projectplanner.user.UserRepository;
+import uz.mukhammad.projectplanner.user.UserService;
 
 import java.util.List;
 import java.util.regex.Pattern;
@@ -24,7 +27,9 @@ public class ProjectService {
 
     private static final Pattern CODE_PATTERN = Pattern.compile("^[A-Z0-9]{2,10}$");
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final UserService userService;
     private final TopicService topicService;
     private final MessageSender messageSender;
     private final BotProperties botProperties;
@@ -89,10 +94,110 @@ public class ProjectService {
     public List<Project> findVisibleProjects(User user) {
         return switch (user.getRole()) {
             case ADMIN, PORTFOLIO_LEAD -> projectRepository.findAllByOrderByCodeAsc();
-            case PROJECT_MANAGER -> projectRepository.findByProjectManagerOrderByCodeAsc(user);
-            case TEAM_MEMBER -> List.of();
+            case PROJECT_MANAGER, TEAM_MEMBER -> projectRepository.findVisibleFor(user);
         };
     }
+
+    @Transactional(readOnly = true)
+    public Project getByCode(String rawCode) {
+        String code = rawCode.trim().toUpperCase();
+        return projectRepository.findByCode(code)
+                .orElseThrow(() -> new BotException(
+                        "Project " + code + " not found. Use /projects to see available projects."));
+    }
+
+    public void requireCanManage(User actor, Project project) {
+        boolean allowed = actor.getRole() == Role.ADMIN
+                || actor.getRole() == Role.PORTFOLIO_LEAD
+                || project.getProjectManager().getId().equals(actor.getId());
+        if (!allowed) {
+            throw new BotException("Only the PM of " + project.getCode() + " or Portfolio Lead can do this.");
+        }
+    }
+
+    public void requireCanView(User actor, Project project) {
+        boolean allowed = actor.getRole() == Role.ADMIN
+                || actor.getRole() == Role.PORTFOLIO_LEAD
+                || project.getProjectManager().getId().equals(actor.getId())
+                || memberRepository.existsByProjectAndUser(project, actor);
+        if (!allowed) {
+            throw new BotException("You don't have access to project " + project.getCode() + ".");
+        }
+    }
+
+    @Transactional
+    public MemberChange addMember(User actor, String projectCode, String username) {
+        Project project = getByCode(projectCode);
+        requireCanManage(actor, project);
+        User user = userService.getByUsername(username);
+
+        if (project.getProjectManager().getId().equals(user.getId())) {
+            throw new BotException("@" + user.getUsername() + " is already the PM of " + project.getCode() + ".");
+        }
+        if (memberRepository.existsByProjectAndUser(project, user)) {
+            throw new BotException("@" + user.getUsername() + " is already in the " + project.getCode() + " team.");
+        }
+
+        memberRepository.save(new ProjectMember(project, user, actor));
+        log.info("Member added: project={}, user={}, by={}",
+                project.getCode(), user.getTelegramId(), actor.getTelegramId());
+        return new MemberChange(project, user);
+    }
+
+    @Transactional
+    public MemberChange removeMember(User actor, String projectCode, String username) {
+        Project project = getByCode(projectCode);
+        requireCanManage(actor, project);
+        User user = userService.getByUsername(username);
+
+        ProjectMember member = memberRepository.findByProjectAndUser(project, user)
+                .orElseThrow(() -> new BotException(
+                        "@" + user.getUsername() + " is not in the " + project.getCode() + " team."));
+
+        memberRepository.delete(member);
+        log.info("Member removed: project={}, user={}, by={}",
+                project.getCode(), user.getTelegramId(), actor.getTelegramId());
+        return new MemberChange(project, user);
+    }
+
+    @Transactional
+    public MemberChange changeProjectManager(User actor, String projectCode, String username) {
+        if (actor.getRole() != Role.ADMIN && actor.getRole() != Role.PORTFOLIO_LEAD) {
+            throw new BotException("Only Portfolio Lead can change the project manager.");
+        }
+        Project project = getByCode(projectCode);
+        User newPm = userService.getByUsername(username);
+
+        if (newPm.getRole() == Role.TEAM_MEMBER) {
+            throw new BotException("@" + newPm.getUsername() + " can't be a Project Manager. "
+                    + "Assign the role first: /setrole @" + newPm.getUsername() + " PROJECT_MANAGER");
+        }
+        User oldPm = project.getProjectManager();
+        if (oldPm.getId().equals(newPm.getId())) {
+            throw new BotException("@" + newPm.getUsername() + " is already the PM of " + project.getCode() + ".");
+        }
+
+        memberRepository.findByProjectAndUser(project, newPm).ifPresent(memberRepository::delete);
+        if (!memberRepository.existsByProjectAndUser(project, oldPm)) {
+            memberRepository.save(new ProjectMember(project, oldPm, actor));
+        }
+
+        project.setProjectManager(newPm);
+        log.info("PM changed: project={}, {} -> {}, by={}",
+                project.getCode(), oldPm.getTelegramId(), newPm.getTelegramId(), actor.getTelegramId());
+        return new MemberChange(project, newPm);
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectTeam getTeam(User actor, String projectCode) {
+        Project project = getByCode(projectCode);
+        requireCanView(actor, project);
+        List<User> members = memberRepository.findByProjectOrderByAddedAtAsc(project).stream()
+                .map(ProjectMember::getUser)
+                .toList();
+        return new ProjectTeam(project, members);
+    }
+
 
     private String formatCard(Project p) {
         User pm = p.getProjectManager();
