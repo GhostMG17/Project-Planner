@@ -1,9 +1,9 @@
 package uz.mukhammad.projectplanner.task;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.config.AppProperties;
 import uz.mukhammad.projectplanner.project.Project;
@@ -12,7 +12,9 @@ import uz.mukhammad.projectplanner.project.ProjectStatus;
 import uz.mukhammad.projectplanner.user.User;
 import uz.mukhammad.projectplanner.user.UserService;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -71,4 +73,136 @@ public class TaskService {
                 task.getKey(), project.getCode(), assignee.getTelegramId(), actor.getTelegramId());
         return task;
     }
+
+
+    @Transactional(readOnly = true)
+    public Task getForView(User actor, Long taskId) {
+        Task task = getById(taskId);
+        projectService.requireCanView(actor, task.getProject());
+        return task;
+    }
+
+    @Transactional(readOnly = true)
+    public Task getForViewByKey(User actor, String rawKey) {
+        Long number = parseKey(rawKey);
+        Task task = taskRepository.findByNumber(number)
+                .orElseThrow(() -> new BotException("Task " + rawKey.toUpperCase() + " not found."));
+        projectService.requireCanView(actor, task.getProject());
+        return task;
+    }
+
+    @Transactional(readOnly = true)
+    public Task prepareStatusChange(User actor, Long taskId, TaskStatus target) {
+        Task task = getById(taskId);
+        checkTransition(actor, task, target);
+        return task;
+    }
+
+    @Transactional
+    public StatusChange changeStatus(User actor, Long taskId, TaskStatus target, String reason) {
+        Task task = getById(taskId);
+        checkTransition(actor, task, target);
+        TaskStatus old = task.getStatus();
+
+        if (target == TaskStatus.BLOCKED) {
+            String r = reason == null ? "" : reason.trim();
+            if (r.isEmpty()) {
+                throw new BotException("Please describe why the task is blocked.");
+            }
+            if (r.length() > 500) {
+                throw new BotException("Reason is too long (max 500 characters).");
+            }
+            task.setBlockedReason(r);
+        } else {
+            task.setBlockedReason(null);
+        }
+
+        if (target == TaskStatus.COMPLETED) {
+            task.setProgress(100);
+            task.setCompletedAt(Instant.now());
+        } else {
+            task.setCompletedAt(null);
+            if (task.getProgress() == 100) {
+                task.setProgress(90);
+            }
+        }
+
+        task.setStatus(target);
+        log.info("Task {} status {} -> {} by {}", task.getKey(), old, target, actor.getTelegramId());
+        return new StatusChange(task, old);
+    }
+
+    @Transactional
+    public Task setProgress(User actor, Long taskId, int progress) {
+        Task task = getById(taskId);
+        requireCanUpdate(actor, task);
+        requireProjectOpen(task);
+        if (task.getStatus() == TaskStatus.COMPLETED) {
+            throw new BotException(task.getKey() + " is already completed.");
+        }
+        if (progress < 0 || progress > 99) {
+            throw new BotException("Progress must be 0–99%. Use Complete for 100%.");
+        }
+        task.setProgress(progress);
+        log.info("Task {} progress {}% by {}", task.getKey(), progress, actor.getTelegramId());
+        return task;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Task> findMyOpenTasks(User user) {
+        return taskRepository.findByAssigneeAndStatusNotOrderByDeadlineAsc(user, TaskStatus.COMPLETED);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Task> findProjectOpenTasks(User actor, String projectCode) {
+        Project project = projectService.getByCode(projectCode);
+        projectService.requireCanView(actor, project);
+        return taskRepository.findByProjectAndStatusNotOrderByDeadlineAsc(project, TaskStatus.COMPLETED);
+    }
+
+    @Transactional(readOnly = true)
+    public long countCompleted(String projectCode) {
+        return taskRepository.countByProjectAndStatus(projectService.getByCode(projectCode), TaskStatus.COMPLETED);
+    }
+
+    private Task getById(Long taskId) {
+        return taskRepository.findWithDetailsById(taskId)
+                .orElseThrow(() -> new BotException("Task not found."));
+    }
+
+    private void requireCanUpdate(User actor, Task task) {
+        boolean allowed = task.getAssignee().getId().equals(actor.getId())
+                || projectService.canManage(actor, task.getProject());
+        if (!allowed) {
+            throw new BotException("Only the responsible person or PM can update " + task.getKey() + ".");
+        }
+    }
+
+    private void requireProjectOpen(Task task) {
+        ProjectStatus ps = task.getProject().getStatus();
+        if (ps == ProjectStatus.COMPLETED || ps == ProjectStatus.ARCHIVED) {
+            throw new BotException("Project " + task.getProject().getCode() + " is " + ps + ". Tasks can't be changed.");
+        }
+    }
+
+    private void checkTransition(User actor, Task task, TaskStatus target) {
+        requireCanUpdate(actor, task);
+        requireProjectOpen(task);
+        if (!task.getStatus().next().contains(target)) {
+            throw new BotException("Can't change " + task.getKey() + " from " + task.getStatus() + " to " + target + ".");
+        }
+        if (task.getStatus() == TaskStatus.COMPLETED && !projectService.canManage(actor, task.getProject())) {
+            throw new BotException("Only the PM can reopen a completed task.");
+        }
+    }
+
+    private Long parseKey(String raw) {
+        String s = raw.trim().toUpperCase().replace("TASK-", "");
+        try {
+            return Long.parseLong(s);
+        } catch (NumberFormatException e) {
+            throw new BotException("Invalid task id '" + raw + "'. Example: TASK-001");
+        }
+    }
+
 }

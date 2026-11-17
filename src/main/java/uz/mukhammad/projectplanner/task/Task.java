@@ -49,6 +49,8 @@ public class Task {
     @Column(nullable = false)
     private TaskStatus status = TaskStatus.NEW;
 
+    private String blockedReason;
+
     @Column(nullable = false)
     private Integer progress = 0;
 

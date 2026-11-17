@@ -75,12 +75,13 @@ public class NewTaskCommand implements CommandHandler {
         String card = taskView.card(task);
         Project p = task.getProject();
 
-        messageSender.send(p.getTelegramChatId(), p.getTelegramThreadId(), "🆕 New task\n\n" + card);
+        messageSender.send(p.getTelegramChatId(), p.getTelegramThreadId(),
+                "🆕 New task\n\n" + card, taskView.keyboard(task));
 
         User assignee = task.getAssignee();
         if (!assignee.getId().equals(actor.getId())) {
             messageSender.send(assignee.getTelegramId(), null,
-                    "📬 New task assigned to you by " + actor.getDisplayName() + "\n\n" + card);
+                    "📬 New task assigned to you by " + actor.getDisplayName() + "\n\n" + card, taskView.keyboard(task));
         }
 
         messageSender.reply(message, "✅ " + task.getKey() + " created.");
