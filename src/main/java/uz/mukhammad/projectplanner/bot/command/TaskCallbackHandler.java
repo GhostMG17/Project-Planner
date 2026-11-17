@@ -11,10 +11,7 @@ import uz.mukhammad.projectplanner.bot.conversation.ConversationStore;
 import uz.mukhammad.projectplanner.bot.conversation.TaskBlockInputHandler;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.common.BotException;
-import uz.mukhammad.projectplanner.task.StatusChange;
-import uz.mukhammad.projectplanner.task.Task;
-import uz.mukhammad.projectplanner.task.TaskService;
-import uz.mukhammad.projectplanner.task.TaskStatus;
+import uz.mukhammad.projectplanner.task.*;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 
@@ -65,6 +62,11 @@ public class TaskCallbackHandler implements CallbackHandler {
                 messageSender.edit(chatId, messageId,
                         "📊 Set progress for " + t.getKey() + "\nCurrent: " + t.getProgress() + "%",
                         taskView.progressKeyboard(t));
+            }
+            case "hist" -> {
+                TaskWithHistory h = taskService.getHistory(actor, taskId);
+                messageSender.edit(chatId, messageId,
+                        taskView.history(h.task(), h.history()), taskView.backKeyboard(h.task()));
             }
             default -> {
                 if (action.startsWith("st_")) {

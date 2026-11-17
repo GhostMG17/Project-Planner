@@ -7,12 +7,17 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.config.AppProperties;
+import uz.mukhammad.projectplanner.task.ChangeType;
 import uz.mukhammad.projectplanner.task.Task;
+import uz.mukhammad.projectplanner.task.TaskHistory;
 import uz.mukhammad.projectplanner.task.TaskStatus;
+import uz.mukhammad.projectplanner.user.User;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+
 
 @Component
 @RequiredArgsConstructor
@@ -58,6 +63,7 @@ public class TaskView {
         for (int i = 0; i < buttons.size(); i += 2) {
             kb.keyboardRow(new InlineKeyboardRow(buttons.subList(i, Math.min(i + 2, buttons.size()))));
         }
+        kb.keyboardRow(new InlineKeyboardRow(button("📜 History", "hist", t)));
         return kb.build();
     }
 
@@ -123,6 +129,58 @@ public class TaskView {
         };
     }
 
+    public String history(Task t, List<TaskHistory> entries) {
+        DateTimeFormatter fmt = historyTimeFormat();
+        StringBuilder sb = new StringBuilder();
+        sb.append("📜 ").append(t.getKey()).append(" · History\n")
+                .append(t.getTitle()).append("\n\n");
+
+        for (TaskHistory e : entries) {
+            sb.append(fmt.format(e.getChangedAt()))
+                    .append(" · ").append(shortName(e.getChangedBy())).append("\n");
+            sb.append("   ").append(describe(e)).append("\n");
+            if (e.getComment() != null && e.getChangeType() != ChangeType.CREATED) {
+                sb.append("   💬 ").append(e.getComment()).append("\n");
+            }
+        }
+        if (entries.size() == 20) {
+            sb.append("\n(showing last 20 changes)");
+        }
+        return sb.toString();
+    }
+
+    public InlineKeyboardMarkup backKeyboard(Task t) {
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(button("« Back", "card", t)))
+                .build();
+    }
+
+    private String describe(TaskHistory e) {
+        return switch (e.getChangeType()) {
+            case CREATED -> "🆕 Created" + (e.getComment() != null ? " · " + e.getComment() : "");
+            case STATUS -> "Status: " + statusText(e.getOldValue()) + " → " + statusText(e.getNewValue());
+            case PROGRESS -> "Progress: " + e.getOldValue() + " → " + e.getNewValue();
+            case ASSIGNEE -> "Responsible: " + e.getOldValue() + " → " + e.getNewValue();
+            case DEADLINE -> "Deadline: " + e.getOldValue() + " → " + e.getNewValue();
+            case PRIORITY -> "Priority: " + e.getOldValue() + " → " + e.getNewValue();
+            case TITLE -> "Title changed";
+            case DESCRIPTION -> "Description changed";
+            case DELIVERABLE -> "Deliverable: " + e.getOldValue() + " → " + e.getNewValue();
+        };
+    }
+
+    private String statusText(String raw) {
+        if (raw == null) {
+            return "—";
+        }
+        try {
+            return statusLabel(TaskStatus.valueOf(raw));
+        } catch (IllegalArgumentException e) {
+            return raw;
+        }
+    }
+
+
     private String transitionLabel(TaskStatus from, TaskStatus to) {
         return switch (to) {
             case IN_PROGRESS -> switch (from) {
@@ -149,5 +207,13 @@ public class TaskView {
                 .text(text)
                 .callbackData(PREFIX + ":" + action + ":" + t.getId())
                 .build();
+    }
+
+    private DateTimeFormatter historyTimeFormat() {
+        return DateTimeFormatter.ofPattern("dd-MM HH:mm").withZone(appProperties.timezone());
+    }
+
+    private String shortName(User user) {
+        return user.getUsername() != null ? "@" + user.getUsername() : user.getDisplayName();
     }
 }

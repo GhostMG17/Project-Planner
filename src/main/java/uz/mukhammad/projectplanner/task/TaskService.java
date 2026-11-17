@@ -14,6 +14,8 @@ import uz.mukhammad.projectplanner.user.UserService;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -22,6 +24,7 @@ import java.util.List;
 public class TaskService {
 
     private final TaskRepository taskRepository;
+    private final TaskHistoryRepository historyRepository;
     private final ProjectService projectService;
     private final UserService userService;
     private final AppProperties appProperties;
@@ -69,6 +72,10 @@ public class TaskService {
         task.setCreatedBy(actor);
 
         task = taskRepository.save(task);
+        String assigneeName = assignee.getUsername() != null
+                ? "@" + assignee.getUsername()
+                : assignee.getDisplayName();
+        record(task, actor, ChangeType.CREATED, null, task.getStatus(), "Assigned to " + assigneeName);
         log.info("Task created: {} in {}, assignee={}, by={}",
                 task.getKey(), project.getCode(), assignee.getTelegramId(), actor.getTelegramId());
         return task;
@@ -103,6 +110,7 @@ public class TaskService {
         Task task = getById(taskId);
         checkTransition(actor, task, target);
         TaskStatus old = task.getStatus();
+        int oldProgress = task.getProgress();
 
         if (target == TaskStatus.BLOCKED) {
             String r = reason == null ? "" : reason.trim();
@@ -128,6 +136,13 @@ public class TaskService {
         }
 
         task.setStatus(target);
+
+        record(task, actor, ChangeType.STATUS, old, target,
+                target == TaskStatus.BLOCKED ? task.getBlockedReason() : null);
+        if (oldProgress != task.getProgress()) {
+            record(task, actor, ChangeType.PROGRESS, oldProgress + "%", task.getProgress() + "%", null);
+        }
+
         log.info("Task {} status {} -> {} by {}", task.getKey(), old, target, actor.getTelegramId());
         return new StatusChange(task, old);
     }
@@ -143,7 +158,9 @@ public class TaskService {
         if (progress < 0 || progress > 99) {
             throw new BotException("Progress must be 0–99%. Use Complete for 100%.");
         }
+        int oldProgress = task.getProgress();
         task.setProgress(progress);
+        record(task, actor, ChangeType.PROGRESS, oldProgress + "%", progress + "%", null);
         log.info("Task {} progress {}% by {}", task.getKey(), progress, actor.getTelegramId());
         return task;
     }
@@ -164,6 +181,16 @@ public class TaskService {
     public long countCompleted(String projectCode) {
         return taskRepository.countByProjectAndStatus(projectService.getByCode(projectCode), TaskStatus.COMPLETED);
     }
+
+    @Transactional(readOnly = true)
+    public TaskWithHistory getHistory(User actor, Long taskId) {
+        Task task = getForView(actor, taskId);
+        List<TaskHistory> history = new ArrayList<>(
+                historyRepository.findTop20ByTaskOrderByChangedAtDescIdDesc(task));
+        Collections.reverse(history);
+        return new TaskWithHistory(task, history);
+    }
+
 
     private Task getById(Long taskId) {
         return taskRepository.findWithDetailsById(taskId)
@@ -203,6 +230,14 @@ public class TaskService {
         } catch (NumberFormatException e) {
             throw new BotException("Invalid task id '" + raw + "'. Example: TASK-001");
         }
+    }
+
+    private void record(Task task, User actor, ChangeType type,
+                        Object oldValue, Object newValue, String comment) {
+        historyRepository.save(new TaskHistory(task, actor, type,
+                oldValue == null ? null : oldValue.toString(),
+                newValue == null ? null : newValue.toString(),
+                comment));
     }
 
 }
