@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uz.mukhammad.projectplanner.common.BotException;
+import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.config.AppProperties;
 import uz.mukhammad.projectplanner.project.Project;
 import uz.mukhammad.projectplanner.project.ProjectService;
@@ -72,10 +73,8 @@ public class TaskService {
         task.setCreatedBy(actor);
 
         task = taskRepository.save(task);
-        String assigneeName = assignee.getUsername() != null
-                ? "@" + assignee.getUsername()
-                : assignee.getDisplayName();
-        record(task, actor, ChangeType.CREATED, null, task.getStatus(), "Assigned to " + assigneeName);
+        record(task, actor, ChangeType.CREATED, null, task.getStatus(),
+                "Assigned to " + assignee.getShortName());
         log.info("Task created: {} in {}, assignee={}, by={}",
                 task.getKey(), project.getCode(), assignee.getTelegramId(), actor.getTelegramId());
         return task;
@@ -191,6 +190,152 @@ public class TaskService {
         return new TaskWithHistory(task, history);
     }
 
+    @Transactional(readOnly = true)
+    public Task prepareEditMenu(User actor, Long taskId) {
+        Task task = getById(taskId);
+        requireCanUpdate(actor, task);
+        requireProjectOpen(task);
+        requireNotCompleted(task);
+        return task;
+    }
+
+    @Transactional(readOnly = true)
+    public Task prepareEdit(User actor, Long taskId, TaskField field) {
+        Task task = getById(taskId);
+        requireCanEdit(actor, task, field);
+        requireProjectOpen(task);
+        requireNotCompleted(task);
+        return task;
+    }
+
+    @Transactional
+    public FieldChange updateField(User actor, Long taskId, TaskField field, String raw) {
+        Task task = prepareEdit(actor, taskId, field);
+        String value = raw == null ? "" : raw.trim();
+        if (value.isEmpty()) {
+            throw new BotException("Value can't be empty.");
+        }
+
+        String oldValue;
+        String newValue;
+
+        switch (field) {
+            case TITLE -> {
+                requireMaxLength(value, 300, "Title");
+                oldValue = task.getTitle();
+                newValue = value;
+                task.setTitle(value);
+                record(task, actor, ChangeType.TITLE, null, null, null);
+            }
+            case DESCRIPTION -> {
+                String description = value.equals("-") ? null : requireMaxLength(value, 2000, "Description");
+                oldValue = task.getDescription();
+                newValue = description;
+                task.setDescription(description);
+                record(task, actor, ChangeType.DESCRIPTION, null, null, null);
+            }
+            case DELIVERABLE -> {
+                requireMaxLength(value, 500, "Deliverable");
+                oldValue = task.getDeliverable();
+                newValue = value;
+                task.setDeliverable(value);
+                record(task, actor, ChangeType.DELIVERABLE, oldValue, newValue, null);
+            }
+            case START_DATE -> {
+                LocalDate start = DateParser.parse(value, "start date");
+                if (start.isAfter(task.getDeadline())) {
+                    throw new BotException("Start date can't be after the deadline ("
+                            + task.getDeadline().format(DateParser.FORMAT) + ").");
+                }
+                oldValue = task.getStartDate().format(DateParser.FORMAT);
+                newValue = start.format(DateParser.FORMAT);
+                task.setStartDate(start);
+                record(task, actor, ChangeType.START_DATE, oldValue, newValue, null);
+            }
+            case DEADLINE -> {
+                LocalDate deadline = DateParser.parse(value, "deadline");
+                if (deadline.isBefore(task.getStartDate())) {
+                    throw new BotException("Deadline can't be before the start date ("
+                            + task.getStartDate().format(DateParser.FORMAT) + ").");
+                }
+                if (deadline.isBefore(LocalDate.now(appProperties.timezone()))) {
+                    throw new BotException("Deadline can't be in the past.");
+                }
+                oldValue = task.getDeadline().format(DateParser.FORMAT);
+                newValue = deadline.format(DateParser.FORMAT);
+                task.setDeadline(deadline);
+                record(task, actor, ChangeType.DEADLINE, oldValue, newValue, null);
+            }
+            default -> throw new IllegalStateException("Unexpected field " + field);
+        }
+
+        log.info("Task {} field {} updated by {}", task.getKey(), field, actor.getTelegramId());
+        return new FieldChange(task, oldValue, newValue);
+    }
+
+// ---------- Priority ----------
+
+    @Transactional(readOnly = true)
+    public Task prepareManage(User actor, Long taskId) {
+        Task task = getById(taskId);
+        projectService.requireCanManage(actor, task.getProject());
+        requireProjectOpen(task);
+        requireNotCompleted(task);
+        return task;
+    }
+
+    @Transactional
+    public FieldChange changePriority(User actor, Long taskId, TaskPriority priority) {
+        Task task = prepareManage(actor, taskId);
+        TaskPriority old = task.getPriority();
+        if (old == priority) {
+            throw new BotException(task.getKey() + " already has " + priority.getLabel() + " priority.");
+        }
+        task.setPriority(priority);
+        record(task, actor, ChangeType.PRIORITY, old.getLabel(), priority.getLabel(), null);
+        log.info("Task {} priority {} -> {} by {}", task.getKey(), old, priority, actor.getTelegramId());
+        return new FieldChange(task, old.getLabel(), priority.getLabel());
+    }
+
+
+    @Transactional(readOnly = true)
+    public ReassignOptions getReassignOptions(User actor, Long taskId) {
+        Task task = prepareManage(actor, taskId);
+        Project project = task.getProject();
+
+        List<User> candidates = new ArrayList<>();
+        candidates.add(project.getProjectManager());
+        candidates.addAll(projectService.getTeam(actor, project.getCode()).members());
+        candidates.removeIf(u -> !u.isActive() || u.getId().equals(task.getAssignee().getId()));
+
+        if (candidates.isEmpty()) {
+            throw new BotException("Nobody else is in the " + project.getCode()
+                    + " team. Add someone first: /addmember " + project.getCode() + " @username");
+        }
+        return new ReassignOptions(task, candidates);
+    }
+
+    @Transactional
+    public Reassignment reassign(User actor, Long taskId, Long newAssigneeId) {
+        Task task = prepareManage(actor, taskId);
+        User newAssignee = userService.getById(newAssigneeId);
+        User old = task.getAssignee();
+
+        if (old.getId().equals(newAssignee.getId())) {
+            throw new BotException(newAssignee.getShortName() + " is already responsible for " + task.getKey() + ".");
+        }
+        if (!newAssignee.isActive() || !projectService.isOnTeam(task.getProject(), newAssignee)) {
+            throw new BotException(newAssignee.getShortName() + " is not in the "
+                    + task.getProject().getCode() + " team.");
+        }
+
+        task.setAssignee(newAssignee);
+        record(task, actor, ChangeType.ASSIGNEE, old.getShortName(), newAssignee.getShortName(), null);
+        log.info("Task {} reassigned {} -> {} by {}", task.getKey(),
+                old.getTelegramId(), newAssignee.getTelegramId(), actor.getTelegramId());
+        return new Reassignment(task, old);
+    }
+
 
     private Task getById(Long taskId) {
         return taskRepository.findWithDetailsById(taskId)
@@ -239,5 +384,31 @@ public class TaskService {
                 newValue == null ? null : newValue.toString(),
                 comment));
     }
+
+
+    private void requireCanEdit(User actor, Task task, TaskField field) {
+        boolean isAssignee = task.getAssignee().getId().equals(actor.getId());
+        boolean assigneeAllowed = field == TaskField.DESCRIPTION || field == TaskField.DELIVERABLE;
+        if (projectService.canManage(actor, task.getProject()) || (isAssignee && assigneeAllowed)) {
+            return;
+        }
+        throw new BotException(isAssignee
+                ? "Only the PM can change " + field.getLabel().toLowerCase() + ". If the task is at risk, use Block with a reason."
+                : "Only the PM can edit " + task.getKey() + ".");
+    }
+
+    private void requireNotCompleted(Task task) {
+        if (task.getStatus() == TaskStatus.COMPLETED) {
+            throw new BotException(task.getKey() + " is completed. Reopen it first.");
+        }
+    }
+
+    private String requireMaxLength(String value, int max, String fieldName) {
+        if (value.length() > max) {
+            throw new BotException(fieldName + " is too long (max " + max + " characters).");
+        }
+        return value;
+    }
+
 
 }

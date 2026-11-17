@@ -9,5 +9,6 @@ public enum ChangeType {
     PRIORITY,
     TITLE,
     DESCRIPTION,
-    DELIVERABLE
+    DELIVERABLE,
+    START_DATE
 }

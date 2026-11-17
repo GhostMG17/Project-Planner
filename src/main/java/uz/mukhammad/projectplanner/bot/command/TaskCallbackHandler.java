@@ -9,6 +9,7 @@ import uz.mukhammad.projectplanner.bot.TaskNotifier;
 import uz.mukhammad.projectplanner.bot.conversation.ConversationKey;
 import uz.mukhammad.projectplanner.bot.conversation.ConversationStore;
 import uz.mukhammad.projectplanner.bot.conversation.TaskBlockInputHandler;
+import uz.mukhammad.projectplanner.bot.conversation.TaskEditInputHandler;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.task.*;
@@ -68,12 +69,43 @@ public class TaskCallbackHandler implements CallbackHandler {
                 messageSender.edit(chatId, messageId,
                         taskView.history(h.task(), h.history()), taskView.backKeyboard(h.task()));
             }
+            case "edit" -> {
+                conversationStore.clear(key);
+                Task t = taskService.prepareEditMenu(actor, taskId);
+                messageSender.edit(chatId, messageId,
+                        "✏️ What do you want to change in " + t.getKey() + "?", taskView.editMenuKeyboard(t));
+            }
+            case "prio" -> {
+                Task t = taskService.prepareManage(actor, taskId);
+                messageSender.edit(chatId, messageId,
+                        "Choose priority for " + t.getKey() + ":", taskView.priorityKeyboard(t));
+            }
+            case "reas" -> {
+                ReassignOptions options = taskService.getReassignOptions(actor, taskId);
+                messageSender.edit(chatId, messageId,
+                        "👤 Reassign " + options.task().getKey() + " to:",
+                        taskView.reassignKeyboard(options.task(), options.candidates()));
+            }
             default -> {
                 if (action.startsWith("st_")) {
                     handleStatus(action.substring(3), actor, taskId, chatId, messageId, key);
                 } else if (action.startsWith("pr_")) {
                     Task t = taskService.setProgress(actor, taskId, parseInt(action.substring(3)));
                     messageSender.edit(chatId, messageId, taskView.card(t), taskView.keyboard(t));
+                } else if (action.startsWith("ed_")) {
+                    TaskField field = TaskField.fromKey(action.substring(3));
+                    Task t = taskService.prepareEdit(actor, taskId, field);
+                    conversationStore.start(key, TaskEditInputHandler.NAME, field.name(), taskId);
+                    messageSender.edit(chatId, messageId, taskView.editPrompt(t, field), taskView.cancelKeyboard(t));
+                } else if (action.startsWith("pri_")) {
+                    TaskPriority priority = parsePriority(action.substring(4));
+                    FieldChange change = taskService.changePriority(actor, taskId, priority);
+                    messageSender.edit(chatId, messageId, taskView.card(change.task()), taskView.keyboard(change.task()));
+                    taskNotifier.fieldChanged(change, "Priority", actor);
+                } else if (action.startsWith("ra_")) {
+                    Reassignment r = taskService.reassign(actor, taskId, parseId(action.substring(3)));
+                    messageSender.edit(chatId, messageId, taskView.card(r.task()), taskView.keyboard(r.task()));
+                    taskNotifier.reassigned(r, actor);
                 } else {
                     throw new BotException("Unknown action.");
                 }
@@ -116,6 +148,14 @@ public class TaskCallbackHandler implements CallbackHandler {
         try {
             return Integer.parseInt(raw);
         } catch (NumberFormatException e) {
+            throw new BotException("Unknown action.");
+        }
+    }
+
+    private TaskPriority parsePriority(String raw) {
+        try {
+            return TaskPriority.valueOf(raw);
+        } catch (IllegalArgumentException e) {
             throw new BotException("Unknown action.");
         }
     }

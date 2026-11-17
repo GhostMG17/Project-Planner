@@ -7,10 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.config.AppProperties;
-import uz.mukhammad.projectplanner.task.ChangeType;
-import uz.mukhammad.projectplanner.task.Task;
-import uz.mukhammad.projectplanner.task.TaskHistory;
-import uz.mukhammad.projectplanner.task.TaskStatus;
+import uz.mukhammad.projectplanner.task.*;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.time.LocalDate;
@@ -43,6 +40,9 @@ public class TaskView {
         sb.append("Status: ").append(statusLabel(t.getStatus())).append("\n");
         sb.append("Progress: ").append(progressBar(t.getProgress())).append(" ").append(t.getProgress()).append("%\n");
         sb.append("Deliverable: ").append(t.getDeliverable() != null ? t.getDeliverable() : "⚠️ not set");
+        if (t.getDescription() != null) {
+            sb.append("\n\n📝 ").append(t.getDescription());
+        }
         if (t.getStatus() == TaskStatus.BLOCKED && t.getBlockedReason() != null) {
             sb.append("\n\n⛔ Blocked: ").append(t.getBlockedReason());
         }
@@ -63,7 +63,12 @@ public class TaskView {
         for (int i = 0; i < buttons.size(); i += 2) {
             kb.keyboardRow(new InlineKeyboardRow(buttons.subList(i, Math.min(i + 2, buttons.size()))));
         }
-        kb.keyboardRow(new InlineKeyboardRow(button("📜 History", "hist", t)));
+        InlineKeyboardRow lastRow = new InlineKeyboardRow();
+        if (current != TaskStatus.COMPLETED) {
+            lastRow.add(button("✏️ Edit", "edit", t));
+        }
+        lastRow.add(button("📜 History", "hist", t));
+        kb.keyboardRow(lastRow);
         return kb.build();
     }
 
@@ -137,7 +142,7 @@ public class TaskView {
 
         for (TaskHistory e : entries) {
             sb.append(fmt.format(e.getChangedAt()))
-                    .append(" · ").append(shortName(e.getChangedBy())).append("\n");
+                    .append(" · ").append(e.getChangedBy().getShortName()).append("\n");
             sb.append("   ").append(describe(e)).append("\n");
             if (e.getComment() != null && e.getChangeType() != ChangeType.CREATED) {
                 sb.append("   💬 ").append(e.getComment()).append("\n");
@@ -155,6 +160,70 @@ public class TaskView {
                 .build();
     }
 
+    public InlineKeyboardMarkup editMenuKeyboard(Task t) {
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(
+                        fieldButton(TaskField.TITLE, t), fieldButton(TaskField.DESCRIPTION, t)))
+                .keyboardRow(new InlineKeyboardRow(
+                        fieldButton(TaskField.DELIVERABLE, t), button("Priority", "prio", t)))
+                .keyboardRow(new InlineKeyboardRow(
+                        fieldButton(TaskField.START_DATE, t), fieldButton(TaskField.DEADLINE, t)))
+                .keyboardRow(new InlineKeyboardRow(button("👤 Reassign", "reas", t)))
+                .keyboardRow(new InlineKeyboardRow(button("« Back", "card", t)))
+                .build();
+    }
+
+    public String editPrompt(Task t, TaskField field) {
+        String hint = switch (field) {
+            case START_DATE, DEADLINE -> " in format dd-MM-yyyy";
+            case DESCRIPTION -> " (send - to clear)";
+            default -> "";
+        };
+        return "✏️ Editing " + t.getKey() + "\n\n"
+                + "Field: " + field.getLabel() + "\n"
+                + "Current: " + currentValue(t, field) + "\n\n"
+                + "Send the new value" + hint + " as a message.\n/cancel to abort.";
+    }
+
+    public InlineKeyboardMarkup priorityKeyboard(Task t) {
+        InlineKeyboardRow row = new InlineKeyboardRow();
+        for (TaskPriority p : TaskPriority.values()) {
+            String label = p.getIcon() + " " + p.getLabel() + (p == t.getPriority() ? " ✓" : "");
+            row.add(button(label, "pri_" + p.name(), t));
+        }
+        return InlineKeyboardMarkup.builder()
+                .keyboardRow(new InlineKeyboardRow(row.subList(0, 2)))
+                .keyboardRow(new InlineKeyboardRow(row.subList(2, 4)))
+                .keyboardRow(new InlineKeyboardRow(button("« Back", "edit", t)))
+                .build();
+    }
+
+    public InlineKeyboardMarkup reassignKeyboard(Task t, List<User> candidates) {
+        InlineKeyboardMarkup.InlineKeyboardMarkupBuilder<?, ?> kb = InlineKeyboardMarkup.builder();
+        for (User u : candidates) {
+            kb.keyboardRow(new InlineKeyboardRow(
+                    button("👤 " + u.getDisplayName() + (u.getUsername() != null ? " (@" + u.getUsername() + ")" : ""),
+                            "ra_" + u.getId(), t)));
+        }
+        kb.keyboardRow(new InlineKeyboardRow(button("« Back", "edit", t)));
+        return kb.build();
+    }
+
+    private String currentValue(Task t, TaskField field) {
+        String value = switch (field) {
+            case TITLE -> t.getTitle();
+            case DESCRIPTION -> t.getDescription();
+            case DELIVERABLE -> t.getDeliverable();
+            case START_DATE -> t.getStartDate().format(DateParser.FORMAT);
+            case DEADLINE -> t.getDeadline().format(DateParser.FORMAT);
+        };
+        return value == null ? "—" : value;
+    }
+
+    private InlineKeyboardButton fieldButton(TaskField field, Task t) {
+        return button(field.getLabel(), "ed_" + field.getKey(), t);
+    }
+
     private String describe(TaskHistory e) {
         return switch (e.getChangeType()) {
             case CREATED -> "🆕 Created" + (e.getComment() != null ? " · " + e.getComment() : "");
@@ -166,6 +235,7 @@ public class TaskView {
             case TITLE -> "Title changed";
             case DESCRIPTION -> "Description changed";
             case DELIVERABLE -> "Deliverable: " + e.getOldValue() + " → " + e.getNewValue();
+            case START_DATE -> "Start date: " + e.getOldValue() + " → " + e.getNewValue();
         };
     }
 
@@ -211,9 +281,5 @@ public class TaskView {
 
     private DateTimeFormatter historyTimeFormat() {
         return DateTimeFormatter.ofPattern("dd-MM HH:mm").withZone(appProperties.timezone());
-    }
-
-    private String shortName(User user) {
-        return user.getUsername() != null ? "@" + user.getUsername() : user.getDisplayName();
     }
 }

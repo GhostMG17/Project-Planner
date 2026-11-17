@@ -56,4 +56,8 @@ public class User {
         return lastName == null ? firstName : firstName + " " + lastName;
     }
 
+    public String getShortName() {
+        return username != null ? "@" + username : getDisplayName();
+    }
+
 }
