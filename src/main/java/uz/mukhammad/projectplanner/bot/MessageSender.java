@@ -22,11 +22,11 @@ public class MessageSender {
 
     private final TelegramClient telegramClient;
 
-    public void send(Long chatId, Integer threadId, String text) {
-        send(chatId, threadId, text, null);
+    public boolean send(Long chatId, Integer threadId, String text) {
+        return send(chatId, threadId, text, null);
     }
 
-    public void send(Long chatId, Integer threadId, String text, InlineKeyboardMarkup keyboard) {
+    public boolean send(Long chatId, Integer threadId, String text, InlineKeyboardMarkup keyboard) {
         SendMessage sendMessage = SendMessage.builder()
                 .chatId(chatId)
                 .messageThreadId(threadId)
@@ -35,8 +35,10 @@ public class MessageSender {
                 .build();
         try {
             telegramClient.execute(sendMessage);
+            return true;
         } catch (TelegramApiException e) {
             log.error("Failed to send message to chat {}, thread {}", chatId, threadId, e);
+            return false;
         }
     }
 

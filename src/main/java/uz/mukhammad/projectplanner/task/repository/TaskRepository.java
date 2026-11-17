@@ -9,6 +9,7 @@ import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.enums.TaskStatus;
 import uz.mukhammad.projectplanner.user.User;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +32,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query("select t.project.id, avg(t.progress) from Task t where t.project in :projects group by t.project.id")
     List<Object[]> averageProgressByProjects(@Param("projects") List<Project> projects);
+
+    @EntityGraph(attributePaths = {"project", "project.projectManager", "assignee"})
+    List<Task> findByStatusNotAndDeadline(TaskStatus status, LocalDate deadline);
+
+    @EntityGraph(attributePaths = {"project", "project.projectManager", "assignee"})
+    List<Task> findByStatusNotAndDeadlineBefore(TaskStatus status, LocalDate date);
 
     long countByProjectAndStatus(Project project, TaskStatus status);
 }
