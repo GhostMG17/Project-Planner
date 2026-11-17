@@ -3,7 +3,7 @@ package uz.mukhammad.projectplanner.bot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
-import uz.mukhammad.projectplanner.project.Project;
+import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.entity.TaskComment;
 import uz.mukhammad.projectplanner.task.enums.TaskStatus;
@@ -103,5 +103,19 @@ public class TaskNotifier {
         }
     }
 
+    public void taskCreated(Task task, User actor) {
+        String card = taskView.card(task);
+        Project p = task.getProject();
+
+        messageSender.send(p.getTelegramChatId(), p.getTelegramThreadId(),
+                "🆕 New task\n\n" + card, taskView.keyboard(task));
+
+        User assignee = task.getAssignee();
+        if (!assignee.getId().equals(actor.getId())) {
+            messageSender.send(assignee.getTelegramId(), null,
+                    "📬 New task assigned to you by " + actor.getDisplayName() + "\n\n" + card,
+                    taskView.keyboard(task));
+        }
+    }
 
 }

@@ -3,7 +3,7 @@ package uz.mukhammad.projectplanner.project_member;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import uz.mukhammad.projectplanner.project.Project;
+import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.time.Instant;

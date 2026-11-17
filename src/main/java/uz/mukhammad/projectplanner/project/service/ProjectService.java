@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.project;
+package uz.mukhammad.projectplanner.project.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +11,13 @@ import uz.mukhammad.projectplanner.bot.TopicService;
 import uz.mukhammad.projectplanner.bot.view.ProjectView;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.common.DateParser;
+import uz.mukhammad.projectplanner.project.entity.Project;
+import uz.mukhammad.projectplanner.project.enums.ProjectField;
+import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
+import uz.mukhammad.projectplanner.project.record.CreateProjectRequest;
+import uz.mukhammad.projectplanner.project.record.MemberChange;
+import uz.mukhammad.projectplanner.project.record.ProjectTeam;
+import uz.mukhammad.projectplanner.project.repository.ProjectRepository;
 import uz.mukhammad.projectplanner.project_member.ProjectMember;
 import uz.mukhammad.projectplanner.project_member.ProjectMemberRepository;
 import uz.mukhammad.projectplanner.user.Role;

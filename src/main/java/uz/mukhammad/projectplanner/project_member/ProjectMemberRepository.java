@@ -2,7 +2,7 @@ package uz.mukhammad.projectplanner.project_member;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import uz.mukhammad.projectplanner.project.Project;
+import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.util.List;

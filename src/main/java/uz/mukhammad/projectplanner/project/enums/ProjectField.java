@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.project;
+package uz.mukhammad.projectplanner.project.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

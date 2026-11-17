@@ -2,7 +2,9 @@ package uz.mukhammad.projectplanner.task.repository;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
-import uz.mukhammad.projectplanner.project.Project;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.enums.TaskStatus;
 import uz.mukhammad.projectplanner.user.User;
@@ -23,6 +25,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @EntityGraph(attributePaths = {"project", "assignee"})
     List<Task> findByProjectAndStatusNotOrderByDeadlineAsc(Project project, TaskStatus status);
+
+    @Query("select coalesce(avg(t.progress), 0) from Task t where t.project = :project")
+    Double averageProgress(@Param("project") Project project);
+
+    @Query("select t.project.id, avg(t.progress) from Task t where t.project in :projects group by t.project.id")
+    List<Object[]> averageProgressByProjects(@Param("projects") List<Project> projects);
 
     long countByProjectAndStatus(Project project, TaskStatus status);
 }

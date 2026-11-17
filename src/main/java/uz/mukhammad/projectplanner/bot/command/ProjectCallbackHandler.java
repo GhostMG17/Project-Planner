@@ -10,7 +10,11 @@ import uz.mukhammad.projectplanner.bot.conversation.ConversationStore;
 import uz.mukhammad.projectplanner.bot.conversation.ProjectEditInputHandler;
 import uz.mukhammad.projectplanner.bot.view.ProjectView;
 import uz.mukhammad.projectplanner.common.BotException;
-import uz.mukhammad.projectplanner.project.*;
+import uz.mukhammad.projectplanner.project.entity.Project;
+import uz.mukhammad.projectplanner.project.enums.ProjectField;
+import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
+import uz.mukhammad.projectplanner.project.record.ProjectTeam;
+import uz.mukhammad.projectplanner.project.service.ProjectService;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 

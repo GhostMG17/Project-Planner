@@ -7,7 +7,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.config.AppProperties;
-import uz.mukhammad.projectplanner.project.ProjectStatus;
+import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
 import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.entity.TaskComment;
 import uz.mukhammad.projectplanner.task.entity.TaskHistory;

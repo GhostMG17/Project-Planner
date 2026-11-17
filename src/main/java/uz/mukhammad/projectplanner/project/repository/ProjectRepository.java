@@ -1,9 +1,10 @@
-package uz.mukhammad.projectplanner.project;
+package uz.mukhammad.projectplanner.project.repository;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.util.List;

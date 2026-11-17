@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uz.mukhammad.projectplanner.common.BotException;
-import uz.mukhammad.projectplanner.project.ProjectStatus;
+import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
 import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.entity.TaskComment;
 import uz.mukhammad.projectplanner.task.record.NewComment;

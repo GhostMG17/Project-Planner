@@ -6,9 +6,9 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TopicService;
 import uz.mukhammad.projectplanner.bot.view.ProjectView;
-import uz.mukhammad.projectplanner.project.Project;
-import uz.mukhammad.projectplanner.project.ProjectField;
-import uz.mukhammad.projectplanner.project.ProjectService;
+import uz.mukhammad.projectplanner.project.entity.Project;
+import uz.mukhammad.projectplanner.project.enums.ProjectField;
+import uz.mukhammad.projectplanner.project.service.ProjectService;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 

@@ -5,10 +5,11 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import uz.mukhammad.projectplanner.common.DateParser;
-import uz.mukhammad.projectplanner.project.Project;
-import uz.mukhammad.projectplanner.project.ProjectField;
-import uz.mukhammad.projectplanner.project.ProjectStatus;
-import uz.mukhammad.projectplanner.project.ProjectTeam;
+import uz.mukhammad.projectplanner.project.entity.Project;
+import uz.mukhammad.projectplanner.project.enums.ProjectField;
+import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
+import uz.mukhammad.projectplanner.project.record.ProjectTeam;
+import uz.mukhammad.projectplanner.task.service.ProgressService;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.util.List;
@@ -16,7 +17,12 @@ import java.util.List;
 @Component
 public class ProjectView {
 
+    private final ProgressService progressService;
     public static final String PREFIX = "prj";
+
+    public ProjectView(ProgressService progressService) {
+        this.progressService = progressService;
+    }
 
     public String card(Project p) {
         User pm = p.getProjectManager();
@@ -27,7 +33,7 @@ public class ProjectView {
         sb.append("Period: ").append(p.getStartDate().format(DateParser.FORMAT))
                 .append(" → ").append(p.getPlannedEndDate().format(DateParser.FORMAT)).append("\n");
         sb.append("Status: ").append(p.getStatus()).append("\n");
-        sb.append("Progress: 0%");
+        sb.append("Progress: ").append(progressService.progressOf(p)).append("%");
         if (p.getDescription() != null) {
             sb.append("\n\n📝 ").append(p.getDescription());
         }

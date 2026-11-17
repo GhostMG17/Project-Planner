@@ -7,7 +7,7 @@ import java.time.LocalDate;
 public record CreateTaskRequest(
         String projectCode,
         String title,
-        String assigneeUsername,
+        Long assigneeId,
         LocalDate deadline,
         TaskPriority priority,
         String deliverable

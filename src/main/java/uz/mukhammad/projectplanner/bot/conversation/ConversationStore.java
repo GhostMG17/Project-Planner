@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,7 +18,12 @@ public class ConversationStore {
 
     public void start(ConversationKey key, String handler, String step, Long entityId) {
         states.values().removeIf(ConversationState::isExpired);
-        states.put(key, new ConversationState(handler, step, entityId, Instant.now().plus(TTL)));
+        states.put(key, new ConversationState(handler, step, entityId, new HashMap<>(), Instant.now().plus(TTL)));
+    }
+
+    public void advance(ConversationKey key, String nextStep) {
+        states.computeIfPresent(key, (k, s) -> new ConversationState(
+                s.handler(), nextStep, s.entityId(), s.data(), Instant.now().plus(TTL)));
     }
 
     public Optional<ConversationState> get(ConversationKey key) {

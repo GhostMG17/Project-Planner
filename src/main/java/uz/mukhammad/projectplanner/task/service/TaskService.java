@@ -7,9 +7,9 @@ import org.springframework.transaction.annotation.Transactional;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.config.AppProperties;
-import uz.mukhammad.projectplanner.project.Project;
-import uz.mukhammad.projectplanner.project.ProjectService;
-import uz.mukhammad.projectplanner.project.ProjectStatus;
+import uz.mukhammad.projectplanner.project.entity.Project;
+import uz.mukhammad.projectplanner.project.service.ProjectService;
+import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
 import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.entity.TaskHistory;
 import uz.mukhammad.projectplanner.task.enums.ChangeType;
@@ -49,10 +49,13 @@ public class TaskService {
                     + ". New tasks can't be added.");
         }
 
-        User assignee = userService.getByUsername(req.assigneeUsername());
+        User assignee = userService.getById(req.assigneeId());
+        if (!assignee.isActive()) {
+            throw new BotException(assignee.getShortName() + " is deactivated.");
+        }
         if (!projectService.isOnTeam(project, assignee)) {
-            throw new BotException("@" + assignee.getUsername() + " is not in the " + project.getCode()
-                    + " team. Add them first: /addmember " + project.getCode() + " @" + assignee.getUsername());
+            throw new BotException(assignee.getShortName() + " is not in the " + project.getCode()
+                    + " team. Add them first: /addmember " + project.getCode() + " @username");
         }
 
         String title = req.title().trim();

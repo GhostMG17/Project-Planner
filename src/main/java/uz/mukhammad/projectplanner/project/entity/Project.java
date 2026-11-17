@@ -1,9 +1,10 @@
-package uz.mukhammad.projectplanner.project;
+package uz.mukhammad.projectplanner.project.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.time.Instant;

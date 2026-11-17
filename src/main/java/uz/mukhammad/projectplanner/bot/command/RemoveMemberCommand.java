@@ -5,9 +5,9 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.common.CommandArgs;
-import uz.mukhammad.projectplanner.project.MemberChange;
-import uz.mukhammad.projectplanner.project.Project;
-import uz.mukhammad.projectplanner.project.ProjectService;
+import uz.mukhammad.projectplanner.project.record.MemberChange;
+import uz.mukhammad.projectplanner.project.entity.Project;
+import uz.mukhammad.projectplanner.project.service.ProjectService;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 

@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.Generated;
-import uz.mukhammad.projectplanner.project.Project;
+import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.task.enums.TaskPriority;
 import uz.mukhammad.projectplanner.task.enums.TaskStatus;
 import uz.mukhammad.projectplanner.user.User;
