@@ -8,10 +8,10 @@ import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.project.Project;
-import uz.mukhammad.projectplanner.task.CreateTaskRequest;
-import uz.mukhammad.projectplanner.task.Task;
-import uz.mukhammad.projectplanner.task.TaskPriority;
-import uz.mukhammad.projectplanner.task.TaskService;
+import uz.mukhammad.projectplanner.task.record.CreateTaskRequest;
+import uz.mukhammad.projectplanner.task.entity.Task;
+import uz.mukhammad.projectplanner.task.enums.TaskPriority;
+import uz.mukhammad.projectplanner.task.service.TaskService;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 

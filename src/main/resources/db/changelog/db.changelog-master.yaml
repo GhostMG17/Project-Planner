@@ -11,3 +11,5 @@ databaseChangeLog:
       file: db/changelog/changes/005-add-task-blocked-reason.sql
   - include:
       file: db/changelog/changes/006-create-task-history.sql
+  - include:
+      file: db/changelog/changes/007-create-task-comments.sql

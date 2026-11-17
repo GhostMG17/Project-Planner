@@ -7,7 +7,15 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.config.AppProperties;
-import uz.mukhammad.projectplanner.task.*;
+import uz.mukhammad.projectplanner.project.ProjectStatus;
+import uz.mukhammad.projectplanner.task.entity.Task;
+import uz.mukhammad.projectplanner.task.entity.TaskComment;
+import uz.mukhammad.projectplanner.task.entity.TaskHistory;
+import uz.mukhammad.projectplanner.task.enums.ChangeType;
+import uz.mukhammad.projectplanner.task.enums.TaskField;
+import uz.mukhammad.projectplanner.task.enums.TaskPriority;
+import uz.mukhammad.projectplanner.task.enums.TaskStatus;
+import uz.mukhammad.projectplanner.task.record.TaskComments;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.time.LocalDate;
@@ -67,6 +75,7 @@ public class TaskView {
         if (current != TaskStatus.COMPLETED) {
             lastRow.add(button("✏️ Edit", "edit", t));
         }
+        lastRow.add(button("💬 Comments", "cmts", t));
         lastRow.add(button("📜 History", "hist", t));
         kb.keyboardRow(lastRow);
         return kb.build();
@@ -208,6 +217,72 @@ public class TaskView {
         kb.keyboardRow(new InlineKeyboardRow(button("« Back", "edit", t)));
         return kb.build();
     }
+
+    public String comments(TaskComments tc) {
+        DateTimeFormatter fmt = historyTimeFormat();
+        Task t = tc.task();
+        StringBuilder sb = new StringBuilder();
+        sb.append("💬 ").append(t.getKey()).append(" · Comments (").append(tc.total()).append(")\n")
+                .append(t.getTitle()).append("\n\n");
+
+        if (tc.comments().isEmpty()) {
+            sb.append("No comments yet.");
+            return sb.toString();
+        }
+
+        int fileIndex = 0;
+        for (TaskComment c : tc.comments()) {
+            sb.append(fmt.format(c.getCreatedAt())).append(" · ").append(c.getAuthor().getShortName()).append("\n");
+            if (c.getBody() != null) {
+                sb.append("   ").append(c.getBody()).append("\n");
+            }
+            if (c.hasFile()) {
+                fileIndex++;
+                sb.append("   📎 [").append(fileIndex).append("] ")
+                        .append(c.getFileName() != null ? c.getFileName() : c.getFileType().name().toLowerCase())
+                        .append("\n");
+            }
+        }
+        if (tc.total() > tc.comments().size()) {
+            sb.append("\n(showing last ").append(tc.comments().size()).append(")");
+        }
+        return sb.toString();
+    }
+
+    public InlineKeyboardMarkup commentsKeyboard(TaskComments tc) {
+        Task t = tc.task();
+        InlineKeyboardMarkup.InlineKeyboardMarkupBuilder<?, ?> kb = InlineKeyboardMarkup.builder();
+
+        InlineKeyboardRow fileRow = new InlineKeyboardRow();
+        int fileIndex = 0;
+        for (TaskComment c : tc.comments()) {
+            if (!c.hasFile()) {
+                continue;
+            }
+            fileIndex++;
+            fileRow.add(button("📎 " + fileIndex, "f_" + c.getId(), t));
+            if (fileRow.size() == 4) {
+                kb.keyboardRow(fileRow);
+                fileRow = new InlineKeyboardRow();
+            }
+        }
+        if (!fileRow.isEmpty()) {
+            kb.keyboardRow(fileRow);
+        }
+
+        if (t.getProject().getStatus() != ProjectStatus.ARCHIVED) {
+            kb.keyboardRow(new InlineKeyboardRow(button("➕ Add comment", "cadd", t)));
+        }
+        kb.keyboardRow(new InlineKeyboardRow(button("« Back", "card", t)));
+        return kb.build();
+    }
+
+    public String commentPrompt(Task t) {
+        return "💬 New comment for " + t.getKey() + "\n\n"
+                + "Send a text message, a document or a photo (you can add a caption).\n"
+                + "/cancel to abort.";
+    }
+
 
     private String currentValue(Task t, TaskField field) {
         String value = switch (field) {

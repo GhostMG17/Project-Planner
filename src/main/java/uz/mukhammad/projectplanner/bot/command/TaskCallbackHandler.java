@@ -6,13 +6,17 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TaskNotifier;
-import uz.mukhammad.projectplanner.bot.conversation.ConversationKey;
-import uz.mukhammad.projectplanner.bot.conversation.ConversationStore;
-import uz.mukhammad.projectplanner.bot.conversation.TaskBlockInputHandler;
-import uz.mukhammad.projectplanner.bot.conversation.TaskEditInputHandler;
+import uz.mukhammad.projectplanner.bot.conversation.*;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.common.BotException;
-import uz.mukhammad.projectplanner.task.*;
+import uz.mukhammad.projectplanner.task.entity.Task;
+import uz.mukhammad.projectplanner.task.entity.TaskComment;
+import uz.mukhammad.projectplanner.task.enums.TaskField;
+import uz.mukhammad.projectplanner.task.enums.TaskPriority;
+import uz.mukhammad.projectplanner.task.enums.TaskStatus;
+import uz.mukhammad.projectplanner.task.record.*;
+import uz.mukhammad.projectplanner.task.service.CommentService;
+import uz.mukhammad.projectplanner.task.service.TaskService;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 
@@ -22,6 +26,7 @@ public class TaskCallbackHandler implements CallbackHandler {
 
     private final AccessService accessService;
     private final TaskService taskService;
+    private final CommentService commentService;
     private final TaskView taskView;
     private final MessageSender messageSender;
     private final ConversationStore conversationStore;
@@ -86,6 +91,16 @@ public class TaskCallbackHandler implements CallbackHandler {
                         "👤 Reassign " + options.task().getKey() + " to:",
                         taskView.reassignKeyboard(options.task(), options.candidates()));
             }
+            case "cmts" -> {
+                conversationStore.clear(key);
+                TaskComments tc = commentService.getComments(actor, taskId);
+                messageSender.edit(chatId, messageId, taskView.comments(tc), taskView.commentsKeyboard(tc));
+            }
+            case "cadd" -> {
+                Task t = commentService.prepareComment(actor, taskId);
+                conversationStore.start(key, TaskCommentInputHandler.NAME, null, taskId);
+                messageSender.edit(chatId, messageId, taskView.commentPrompt(t), taskView.cancelKeyboard(t));
+            }
             default -> {
                 if (action.startsWith("st_")) {
                     handleStatus(action.substring(3), actor, taskId, chatId, messageId, key);
@@ -106,6 +121,12 @@ public class TaskCallbackHandler implements CallbackHandler {
                     Reassignment r = taskService.reassign(actor, taskId, parseId(action.substring(3)));
                     messageSender.edit(chatId, messageId, taskView.card(r.task()), taskView.keyboard(r.task()));
                     taskNotifier.reassigned(r, actor);
+                } else if (action.startsWith("f_")) {
+                    TaskComment c = commentService.getFile(actor, parseId(action.substring(2)));
+                    Integer threadId = cq.getMessage() instanceof Message m && m.isTopicMessage()
+                            ? m.getMessageThreadId() : null;
+                    messageSender.sendFile(chatId, threadId, c.getFileType(), c.getFileId(),
+                            c.getTask().getKey() + (c.getFileName() != null ? " · " + c.getFileName() : ""), null);
                 } else {
                     throw new BotException("Unknown action.");
                 }

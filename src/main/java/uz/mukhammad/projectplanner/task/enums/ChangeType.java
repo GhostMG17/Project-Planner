@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.task;
+package uz.mukhammad.projectplanner.task.enums;
 
 public enum ChangeType {
     CREATED,

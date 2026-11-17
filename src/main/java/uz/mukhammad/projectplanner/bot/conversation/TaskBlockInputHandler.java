@@ -6,9 +6,9 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TaskNotifier;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
-import uz.mukhammad.projectplanner.task.StatusChange;
-import uz.mukhammad.projectplanner.task.TaskService;
-import uz.mukhammad.projectplanner.task.TaskStatus;
+import uz.mukhammad.projectplanner.task.record.StatusChange;
+import uz.mukhammad.projectplanner.task.service.TaskService;
+import uz.mukhammad.projectplanner.task.enums.TaskStatus;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 

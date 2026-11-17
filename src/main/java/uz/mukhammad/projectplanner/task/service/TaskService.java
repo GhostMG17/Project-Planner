@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.task;
+package uz.mukhammad.projectplanner.task.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +10,15 @@ import uz.mukhammad.projectplanner.config.AppProperties;
 import uz.mukhammad.projectplanner.project.Project;
 import uz.mukhammad.projectplanner.project.ProjectService;
 import uz.mukhammad.projectplanner.project.ProjectStatus;
+import uz.mukhammad.projectplanner.task.entity.Task;
+import uz.mukhammad.projectplanner.task.entity.TaskHistory;
+import uz.mukhammad.projectplanner.task.enums.ChangeType;
+import uz.mukhammad.projectplanner.task.enums.TaskField;
+import uz.mukhammad.projectplanner.task.enums.TaskPriority;
+import uz.mukhammad.projectplanner.task.enums.TaskStatus;
+import uz.mukhammad.projectplanner.task.record.*;
+import uz.mukhammad.projectplanner.task.repository.TaskHistoryRepository;
+import uz.mukhammad.projectplanner.task.repository.TaskRepository;
 import uz.mukhammad.projectplanner.user.User;
 import uz.mukhammad.projectplanner.user.UserService;
 

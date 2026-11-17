@@ -64,20 +64,28 @@ public class PlannerBot implements LongPollingSingleThreadUpdateConsumer {
             return;
         }
 
-        if (!update.hasMessage() || !update.getMessage().hasText()) {
+        if (!update.hasMessage()) {
             return;
         }
         Message message = update.getMessage();
-        Long userId = message.getFrom() != null ? message.getFrom().getId() : null;
-        log.info("chatId={}, threadId={}, userId={}, text={}",
-                message.getChatId(), message.getMessageThreadId(), userId, message.getText());
-
         if (message.getFrom() == null) {
             return;
         }
+        ConversationKey key = new ConversationKey(message.getChatId(), message.getFrom().getId());
+
+        if (!message.hasText()) {
+            if (message.hasDocument() || message.hasPhoto()) {
+                log.info("chatId={}, threadId={}, userId={}, file message",
+                        message.getChatId(), message.getMessageThreadId(), message.getFrom().getId());
+                handleInput(message, key);
+            }
+            return;
+        }
+
+        log.info("chatId={}, threadId={}, userId={}, text={}",
+                message.getChatId(), message.getMessageThreadId(), message.getFrom().getId(), message.getText());
 
         String text = message.getText().trim();
-        ConversationKey key = new ConversationKey(message.getChatId(), message.getFrom().getId());
 
         if (!text.startsWith("/")) {
             handleInput(message, key);

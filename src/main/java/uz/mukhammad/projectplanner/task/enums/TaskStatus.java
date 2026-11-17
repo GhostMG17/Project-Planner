@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.task;
+package uz.mukhammad.projectplanner.task.enums;
 import java.util.EnumSet;
 import java.util.Set;
 

@@ -1,8 +1,9 @@
-package uz.mukhammad.projectplanner.task;
+package uz.mukhammad.projectplanner.task.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import uz.mukhammad.projectplanner.task.enums.ChangeType;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.time.Instant;

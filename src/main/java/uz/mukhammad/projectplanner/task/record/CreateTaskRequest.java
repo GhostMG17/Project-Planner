@@ -1,4 +1,6 @@
-package uz.mukhammad.projectplanner.task;
+package uz.mukhammad.projectplanner.task.record;
+
+import uz.mukhammad.projectplanner.task.enums.TaskPriority;
 
 import java.time.LocalDate;
 

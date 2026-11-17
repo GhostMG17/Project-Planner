@@ -4,12 +4,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
+import org.telegram.telegrambots.meta.api.methods.send.SendDocument;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import uz.mukhammad.projectplanner.task.enums.FileType;
 
 @Slf4j
 @Component
@@ -74,4 +78,33 @@ public class MessageSender {
             log.error("Failed to answer callback {}", callbackQueryId, e);
         }
     }
+
+    public void sendFile(Long chatId, Integer threadId, FileType type, String fileId,
+                         String caption, InlineKeyboardMarkup keyboard) {
+        String safeCaption = caption != null && caption.length() > 1024
+                ? caption.substring(0, 1021) + "..."
+                : caption;
+        try {
+            if (type == FileType.PHOTO) {
+                telegramClient.execute(SendPhoto.builder()
+                        .chatId(chatId)
+                        .messageThreadId(threadId)
+                        .photo(new InputFile(fileId))
+                        .caption(safeCaption)
+                        .replyMarkup(keyboard)
+                        .build());
+            } else {
+                telegramClient.execute(SendDocument.builder()
+                        .chatId(chatId)
+                        .messageThreadId(threadId)
+                        .document(new InputFile(fileId))
+                        .caption(safeCaption)
+                        .replyMarkup(keyboard)
+                        .build());
+            }
+        } catch (TelegramApiException e) {
+            log.error("Failed to send file to chat {}, thread {}", chatId, threadId, e);
+        }
+    }
+
 }

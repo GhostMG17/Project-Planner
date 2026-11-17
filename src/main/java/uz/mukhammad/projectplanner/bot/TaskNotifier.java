@@ -4,7 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.project.Project;
-import uz.mukhammad.projectplanner.task.*;
+import uz.mukhammad.projectplanner.task.entity.Task;
+import uz.mukhammad.projectplanner.task.entity.TaskComment;
+import uz.mukhammad.projectplanner.task.enums.TaskStatus;
+import uz.mukhammad.projectplanner.task.record.FieldChange;
+import uz.mukhammad.projectplanner.task.record.Reassignment;
+import uz.mukhammad.projectplanner.task.record.StatusChange;
 import uz.mukhammad.projectplanner.user.User;
 
 @Component
@@ -74,6 +79,27 @@ public class TaskNotifier {
         if (!oldA.getId().equals(actor.getId())) {
             messageSender.send(oldA.getTelegramId(), null,
                     "ℹ️ " + t.getKey() + " was reassigned to " + newA.getShortName() + ".\n" + t.getTitle());
+        }
+    }
+
+    public void commented(TaskComment c, User actor) {
+        Task t = c.getTask();
+        Project p = t.getProject();
+        String header = "💬 " + t.getKey() + " · " + actor.getShortName() + "\n" + t.getTitle();
+        String text = c.getBody() != null ? header + "\n\n" + c.getBody() : header;
+
+        if (c.hasFile()) {
+            messageSender.sendFile(p.getTelegramChatId(), p.getTelegramThreadId(),
+                    c.getFileType(), c.getFileId(), text, null);
+        } else {
+            messageSender.send(p.getTelegramChatId(), p.getTelegramThreadId(), text);
+        }
+
+        User assignee = t.getAssignee();
+        if (!assignee.getId().equals(actor.getId())) {
+            messageSender.send(assignee.getTelegramId(), null,
+                    "📬 New comment on your task\n\n" + text + (c.hasFile() ? "\n📎 attachment" : ""),
+                    taskView.keyboard(t));
         }
     }
 

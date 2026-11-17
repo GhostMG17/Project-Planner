@@ -1,8 +1,10 @@
-package uz.mukhammad.projectplanner.task;
+package uz.mukhammad.projectplanner.task.repository;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import uz.mukhammad.projectplanner.project.Project;
+import uz.mukhammad.projectplanner.task.entity.Task;
+import uz.mukhammad.projectplanner.task.enums.TaskStatus;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.util.List;

@@ -6,8 +6,8 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.common.CommandArgs;
-import uz.mukhammad.projectplanner.task.Task;
-import uz.mukhammad.projectplanner.task.TaskService;
+import uz.mukhammad.projectplanner.task.entity.Task;
+import uz.mukhammad.projectplanner.task.service.TaskService;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 
