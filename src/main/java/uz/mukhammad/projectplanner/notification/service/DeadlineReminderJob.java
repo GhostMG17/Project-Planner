@@ -29,6 +29,7 @@ public class DeadlineReminderJob {
 
     private final TaskRepository taskRepository;
     private final NotificationService notificationService;
+    private final ProjectRiskChecker projectRiskChecker;
     private final TaskView taskView;
     private final AppProperties appProperties;
     private final NotificationProperties notificationProperties;
@@ -72,6 +73,7 @@ public class DeadlineReminderJob {
         sent += remindDue(today.plusDays(2), NotificationTrigger.DEADLINE_IN_2_DAYS);
         sent += remindDue(today.plusDays(1), NotificationTrigger.DEADLINE_TOMORROW);
         sent += alertOverdue(today);
+        sent += projectRiskChecker.checkAll();
 
         log.info("Deadline reminders run finished: {} notification(s) sent", sent);
         return sent;

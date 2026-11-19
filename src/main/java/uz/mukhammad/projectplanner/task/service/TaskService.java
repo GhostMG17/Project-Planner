@@ -348,6 +348,18 @@ public class TaskService {
         return new Reassignment(task, old);
     }
 
+    @Transactional(readOnly = true)
+    public List<Task> findOverdue(User user) {
+        List<Project> projects = projectService.findVisibleProjects(user).stream()
+                .filter(p -> p.getStatus() == ProjectStatus.ACTIVE || p.getStatus() == ProjectStatus.ON_HOLD)
+                .toList();
+        if (projects.isEmpty()) {
+            return List.of();
+        }
+        LocalDate today = LocalDate.now(appProperties.timezone());
+        return taskRepository.findByProjectInAndStatusNotAndDeadlineBeforeOrderByDeadlineAsc(
+                projects, TaskStatus.COMPLETED, today);
+    }
 
     private Task getById(Long taskId) {
         return taskRepository.findWithDetailsById(taskId)

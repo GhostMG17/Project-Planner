@@ -10,6 +10,7 @@ import uz.mukhammad.projectplanner.task.enums.TaskStatus;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,5 +40,11 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @EntityGraph(attributePaths = {"project", "project.projectManager", "assignee"})
     List<Task> findByStatusNotAndDeadlineBefore(TaskStatus status, LocalDate date);
 
+    @EntityGraph(attributePaths = {"project", "assignee"})
+    List<Task> findByProjectInAndStatusNotAndDeadlineBeforeOrderByDeadlineAsc(
+            Collection<Project> projects, TaskStatus status, LocalDate date);
+
     long countByProjectAndStatus(Project project, TaskStatus status);
+
+    long countByProjectAndStatusNotAndDeadlineBefore(Project project, TaskStatus status, LocalDate date);
 }

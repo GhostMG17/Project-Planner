@@ -9,6 +9,8 @@ import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.enums.ProjectField;
 import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
 import uz.mukhammad.projectplanner.project.record.ProjectTeam;
+import uz.mukhammad.projectplanner.risk.ProjectHealth;
+import uz.mukhammad.projectplanner.risk.service.ProjectHealthService;
 import uz.mukhammad.projectplanner.task.service.ProgressService;
 import uz.mukhammad.projectplanner.user.User;
 
@@ -18,10 +20,12 @@ import java.util.List;
 public class ProjectView {
 
     private final ProgressService progressService;
+    private final ProjectHealthService projectHealthService;
     public static final String PREFIX = "prj";
 
-    public ProjectView(ProgressService progressService) {
+    public ProjectView(ProgressService progressService, ProjectHealthService projectHealthService) {
         this.progressService = progressService;
+        this.projectHealthService = projectHealthService;
     }
 
     public String card(Project p) {
@@ -34,6 +38,13 @@ public class ProjectView {
                 .append(" → ").append(p.getPlannedEndDate().format(DateParser.FORMAT)).append("\n");
         sb.append("Status: ").append(p.getStatus()).append("\n");
         sb.append("Progress: ").append(progressService.progressOf(p)).append("%");
+        if (p.getStatus() == ProjectStatus.ACTIVE || p.getStatus() == ProjectStatus.ON_HOLD) {
+            ProjectHealth h = projectHealthService.assess(p);
+            sb.append("\nHealth: ").append(h.label());
+            if (h.atRisk()) {
+                sb.append(" (").append(h.reason()).append(")");
+            }
+        }
         if (p.getDescription() != null) {
             sb.append("\n\n📝 ").append(p.getDescription());
         }
@@ -48,6 +59,10 @@ public class ProjectView {
 
         if (!canManage || p.getStatus() == ProjectStatus.ARCHIVED) {
             return InlineKeyboardMarkup.builder().keyboardRow(viewRow).build();
+        }
+
+        if (p.getStatus() == ProjectStatus.ACTIVE || p.getStatus() == ProjectStatus.ON_HOLD) {
+            viewRow.add(button(p.isAtRiskManual() ? "✅ Clear risk" : "⚠️ Flag risk", "risk", p));
         }
 
         InlineKeyboardRow manageRow = new InlineKeyboardRow();

@@ -4,5 +4,6 @@ public enum NotificationTrigger {
     DEADLINE_IN_2_DAYS,
     DEADLINE_TOMORROW,
     OVERDUE,
-    PROJECT_AT_RISK
+    PROJECT_AT_RISK,
+    PROJECT_BACK_ON_TRACK
 }

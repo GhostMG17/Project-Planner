@@ -10,6 +10,7 @@ import uz.mukhammad.projectplanner.bot.conversation.ConversationStore;
 import uz.mukhammad.projectplanner.bot.conversation.ProjectEditInputHandler;
 import uz.mukhammad.projectplanner.bot.view.ProjectView;
 import uz.mukhammad.projectplanner.common.BotException;
+import uz.mukhammad.projectplanner.notification.service.ProjectRiskChecker;
 import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.enums.ProjectField;
 import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
@@ -28,6 +29,7 @@ public class ProjectCallbackHandler implements CallbackHandler {
     private final MessageSender messageSender;
     private final TopicService topicService;
     private final ConversationStore conversationStore;
+    private final ProjectRiskChecker projectRiskChecker;
 
     @Override
     public String prefix() {
@@ -95,6 +97,14 @@ public class ProjectCallbackHandler implements CallbackHandler {
                 messageSender.edit(chatId, messageId,
                         "✏️ What do you want to edit in " + p.getCode() + "?",
                         projectView.editMenuKeyboard(p));
+            }
+            case "risk" -> {
+                Project p = projectService.toggleRiskFlag(actor, projectId);
+                messageSender.edit(chatId, messageId, projectView.card(p), projectView.cardKeyboard(p, true));
+                messageSender.send(p.getTelegramChatId(), p.getTelegramThreadId(), p.isAtRiskManual()
+                        ? "⚠️ Project flagged AT RISK by " + actor.getShortName() + "."
+                        : "✅ Risk flag cleared by " + actor.getShortName() + ".");
+                projectRiskChecker.check(p);
             }
             default -> {
                 if (action.startsWith("edit_")) {

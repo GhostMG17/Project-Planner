@@ -64,6 +64,11 @@ public class Project {
     @Column(nullable = false)
     private Instant updatedAt;
 
+    @Column(nullable = false)
+    private boolean atRiskManual = false;
+
+    private Instant atRiskSince;
+
     @PrePersist
     void onCreate() {
         createdAt = Instant.now();

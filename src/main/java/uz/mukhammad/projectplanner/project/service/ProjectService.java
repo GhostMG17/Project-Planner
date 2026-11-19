@@ -282,6 +282,18 @@ public class ProjectService {
         return p;
     }
 
+    @Transactional
+    public Project toggleRiskFlag(User actor, Long projectId) {
+        Project p = getById(projectId);
+        requireCanManage(actor, p);
+        if (p.getStatus() != ProjectStatus.ACTIVE && p.getStatus() != ProjectStatus.ON_HOLD) {
+            throw new BotException("Project " + p.getCode() + " is " + p.getStatus() + ".");
+        }
+        p.setAtRiskManual(!p.isAtRiskManual());
+        log.info("Project {} manual risk flag = {} by {}", p.getCode(), p.isAtRiskManual(), actor.getTelegramId());
+        return p;
+    }
+
     public boolean isOnTeam(Project project, User user) {
         return project.getProjectManager().getId().equals(user.getId())
                 || memberRepository.existsByProjectAndUser(project, user);
