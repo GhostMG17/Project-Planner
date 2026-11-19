@@ -10,6 +10,9 @@ import uz.mukhammad.projectplanner.user.Role;
 import uz.mukhammad.projectplanner.user.User;
 import uz.mukhammad.projectplanner.user.UserService;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 @Component
 @RequiredArgsConstructor
 public class SetRoleCommand implements CommandHandler {
@@ -28,6 +31,10 @@ public class SetRoleCommand implements CommandHandler {
         return "Change user role (admin)";
     }
 
+    @Override
+    public Set<Role> visibleTo() {
+        return EnumSet.of(Role.ADMIN);
+    }
 
     @Override
     public void handle(Message message) {

@@ -9,6 +9,9 @@ import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.Role;
 import uz.mukhammad.projectplanner.user.User;
 
+import java.util.EnumSet;
+import java.util.Set;
+
 @Component
 @RequiredArgsConstructor
 public class CheckDeadlinesCommand implements CommandHandler {
@@ -19,6 +22,10 @@ public class CheckDeadlinesCommand implements CommandHandler {
 
     @Override public String command() { return "/checkdeadlines"; }
     @Override public String description() { return "Run deadline reminders now (admin)"; }
+    @Override
+    public Set<Role> visibleTo() {
+        return EnumSet.of(Role.ADMIN);
+    }
 
     @Override
     public void handle(Message message) {

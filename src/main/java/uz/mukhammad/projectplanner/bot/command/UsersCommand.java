@@ -9,11 +9,13 @@ import uz.mukhammad.projectplanner.user.Role;
 import uz.mukhammad.projectplanner.user.User;
 import uz.mukhammad.projectplanner.user.UserService;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
-public class UsersCommand implements CommandHandler{
+public class UsersCommand implements CommandHandler {
 
     private final AccessService accessService;
     private final UserService userService;
@@ -21,6 +23,11 @@ public class UsersCommand implements CommandHandler{
 
     @Override public String command() { return "/users"; }
     @Override public String description() { return "List registered users (admin)"; }
+
+    @Override
+    public Set<Role> visibleTo() {
+        return EnumSet.of(Role.ADMIN, Role.PORTFOLIO_LEAD);
+    }
 
     @Override
     public void handle(Message message) {
@@ -38,5 +45,4 @@ public class UsersCommand implements CommandHandler{
         }
         messageSender.reply(message, sb.toString());
     }
-
 }

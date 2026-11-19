@@ -14,6 +14,8 @@ import uz.mukhammad.projectplanner.user.Role;
 import uz.mukhammad.projectplanner.user.User;
 
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -29,7 +31,10 @@ public class NewProjectCommand implements CommandHandler {
 
     @Override public String command() { return "/newproject"; }
     @Override public String description() { return "Create a project (PM, Portfolio Lead)"; }
-
+    @Override
+    public Set<Role> visibleTo() {
+        return EnumSet.of(Role.ADMIN, Role.PORTFOLIO_LEAD, Role.PROJECT_MANAGER);
+    }
     @Override
     public void handle(Message message) {
         User user = accessService.requireUser(message.getFrom().getId());

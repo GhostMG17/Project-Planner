@@ -9,7 +9,11 @@ import uz.mukhammad.projectplanner.project.record.MemberChange;
 import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.service.ProjectService;
 import uz.mukhammad.projectplanner.user.AccessService;
+import uz.mukhammad.projectplanner.user.Role;
 import uz.mukhammad.projectplanner.user.User;
+
+import java.util.EnumSet;
+import java.util.Set;
 
 @Component
 @RequiredArgsConstructor
@@ -21,6 +25,11 @@ public class SetPmCommand implements CommandHandler {
 
     @Override public String command() { return "/setpm"; }
     @Override public String description() { return "Change project manager: /setpm CODE @username"; }
+
+    @Override
+    public Set<Role> visibleTo() {
+        return EnumSet.of(Role.ADMIN);
+    }
 
     @Override
     public void handle(Message message) {

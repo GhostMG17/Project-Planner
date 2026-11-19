@@ -70,9 +70,11 @@ public class DeadlineReminderJob {
 
         LocalDate today = now.toLocalDate();
         int sent = 0;
-        sent += remindDue(today.plusDays(2), NotificationTrigger.DEADLINE_IN_2_DAYS);
-        sent += remindDue(today.plusDays(1), NotificationTrigger.DEADLINE_TOMORROW);
+        for (int days : notificationProperties.remindDaysBefore()) {
+            sent += remindDue(today.plusDays(days), days);
+        }
         sent += alertOverdue(today);
+        sent += projectRiskChecker.checkAll();
         sent += projectRiskChecker.checkAll();
 
         log.info("Deadline reminders run finished: {} notification(s) sent", sent);
@@ -155,4 +157,41 @@ public class DeadlineReminderJob {
     private String key(NotificationTrigger trigger, Task t, String target, Long targetId) {
         return trigger + ":" + t.getId() + ":" + t.getDeadline() + ":" + target + ":" + targetId;
     }
+
+    private int remindDue(LocalDate deadline, int daysBefore) {
+        int sent = 0;
+        NotificationTrigger trigger = NotificationTrigger.DEADLINE_REMINDER;
+        String when = daysBefore == 1 ? "TOMORROW" : "in " + daysBefore + " days";
+        boolean notifyPm = daysBefore <= notificationProperties.pmDaysBefore();
+
+        for (Task t : openTasks(taskRepository.findByStatusNotAndDeadline(TaskStatus.COMPLETED, deadline))) {
+            User assignee = t.getAssignee();
+            String text = "⏰ " + t.getKey() + " is due " + when
+                    + " (" + t.getDeadline().format(DateParser.FORMAT) + ")\n"
+                    + t.getTitle() + "\n\n" + details(t);
+
+            if (notificationService.notifyUser(trigger, assignee, t,
+                    reminderKey(t, daysBefore, assignee), text, taskView.keyboard(t))) {
+                sent++;
+            }
+
+            User pm = t.getProject().getProjectManager();
+            if (notifyPm && !pm.getId().equals(assignee.getId())) {
+                String pmText = "⏰ " + t.getKey() + " (" + assignee.getShortName() + ") is due " + when
+                        + " (" + t.getDeadline().format(DateParser.FORMAT) + ")\n"
+                        + t.getTitle() + "\n\n" + details(t);
+                if (notificationService.notifyUser(trigger, pm, t,
+                        reminderKey(t, daysBefore, pm), pmText, taskView.keyboard(t))) {
+                    sent++;
+                }
+            }
+        }
+        return sent;
+    }
+
+    private String reminderKey(Task t, int daysBefore, User user) {
+        return NotificationTrigger.DEADLINE_REMINDER + ":" + t.getId() + ":" + t.getDeadline()
+                + ":d" + daysBefore + ":user:" + user.getId();
+    }
+
 }

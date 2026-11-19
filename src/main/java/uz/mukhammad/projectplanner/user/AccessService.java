@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import uz.mukhammad.projectplanner.common.BotException;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,11 @@ public class AccessService {
             throw new BotException("Your account is deactivated. Contact the administrator.");
         }
         return user;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<User> findUser(Long telegramId) {
+        return userRepository.findByTelegramId(telegramId).filter(User::isActive);
     }
 
     public void requireRole(User user, Role... allowed) {
