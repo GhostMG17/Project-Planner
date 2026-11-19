@@ -6,7 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import uz.mukhammad.projectplanner.config.AppProperties;
 import uz.mukhammad.projectplanner.config.RiskProperties;
 import uz.mukhammad.projectplanner.project.entity.Project;
-import uz.mukhammad.projectplanner.risk.ProjectHealth;
+import uz.mukhammad.projectplanner.risk.records.ProjectHealth;
 import uz.mukhammad.projectplanner.task.enums.TaskStatus;
 import uz.mukhammad.projectplanner.task.repository.TaskRepository;
 

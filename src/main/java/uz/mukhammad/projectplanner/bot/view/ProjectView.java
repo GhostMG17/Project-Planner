@@ -9,7 +9,7 @@ import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.enums.ProjectField;
 import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
 import uz.mukhammad.projectplanner.project.record.ProjectTeam;
-import uz.mukhammad.projectplanner.risk.ProjectHealth;
+import uz.mukhammad.projectplanner.risk.records.ProjectHealth;
 import uz.mukhammad.projectplanner.risk.service.ProjectHealthService;
 import uz.mukhammad.projectplanner.task.service.ProgressService;
 import uz.mukhammad.projectplanner.user.User;
@@ -55,7 +55,12 @@ public class ProjectView {
     }
 
     public InlineKeyboardMarkup cardKeyboard(Project p, boolean canManage) {
-        InlineKeyboardRow viewRow = new InlineKeyboardRow(button("👥 Team", "team", p));
+        InlineKeyboardRow viewRow = new InlineKeyboardRow(
+                button("👥 Team", "team", p),
+                InlineKeyboardButton.builder()
+                        .text("⚠️ Risks")
+                        .callbackData(RiskView.PREFIX + ":list:" + p.getId())
+                        .build());
 
         if (!canManage || p.getStatus() == ProjectStatus.ARCHIVED) {
             return InlineKeyboardMarkup.builder().keyboardRow(viewRow).build();

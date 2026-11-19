@@ -8,7 +8,7 @@ import uz.mukhammad.projectplanner.notification.enums.NotificationTrigger;
 import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
 import uz.mukhammad.projectplanner.project.repository.ProjectRepository;
-import uz.mukhammad.projectplanner.risk.ProjectHealth;
+import uz.mukhammad.projectplanner.risk.records.ProjectHealth;
 import uz.mukhammad.projectplanner.risk.service.ProjectHealthService;
 import uz.mukhammad.projectplanner.user.Role;
 import uz.mukhammad.projectplanner.user.User;

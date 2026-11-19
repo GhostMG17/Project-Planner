@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/changes/008-create-notifications.sql
   - include:
       file: db/changelog/changes/009-add-project-risk.sql
+  - include:
+      file: db/changelog/changes/010-create-risks.sql

@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.risk;
+package uz.mukhammad.projectplanner.risk.records;
 
 import java.util.ArrayList;
 import java.util.List;

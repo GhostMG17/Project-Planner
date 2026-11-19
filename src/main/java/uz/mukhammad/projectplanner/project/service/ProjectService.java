@@ -26,6 +26,7 @@ import uz.mukhammad.projectplanner.user.UserRepository;
 import uz.mukhammad.projectplanner.user.UserService;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -292,6 +293,14 @@ public class ProjectService {
         p.setAtRiskManual(!p.isAtRiskManual());
         log.info("Project {} manual risk flag = {} by {}", p.getCode(), p.isAtRiskManual(), actor.getTelegramId());
         return p;
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> getTeamUsers(User actor, Project project) {
+        List<User> team = new ArrayList<>();
+        team.add(project.getProjectManager());
+        team.addAll(getTeam(actor, project.getCode()).members());
+        return team.stream().filter(User::isActive).toList();
     }
 
     public boolean isOnTeam(Project project, User user) {
