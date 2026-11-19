@@ -19,3 +19,5 @@ databaseChangeLog:
       file: db/changelog/changes/009-add-project-risk.sql
   - include:
       file: db/changelog/changes/010-create-risks.sql
+  - include:
+      file: db/changelog/changes/011-create-milestones.sql

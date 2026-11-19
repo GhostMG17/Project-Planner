@@ -57,30 +57,34 @@ public class ProjectView {
     public InlineKeyboardMarkup cardKeyboard(Project p, boolean canManage) {
         InlineKeyboardRow viewRow = new InlineKeyboardRow(
                 button("👥 Team", "team", p),
-                InlineKeyboardButton.builder()
-                        .text("⚠️ Risks")
-                        .callbackData(RiskView.PREFIX + ":list:" + p.getId())
-                        .build());
+                external("⚠️ Risks", RiskView.PREFIX + ":list:" + p.getId()),
+                external("🎯 Milestones", MilestoneView.PREFIX + ":list:" + p.getId()));
+
+        InlineKeyboardMarkup.InlineKeyboardMarkupBuilder<?, ?> kb = InlineKeyboardMarkup.builder()
+                .keyboardRow(viewRow);
 
         if (!canManage || p.getStatus() == ProjectStatus.ARCHIVED) {
-            return InlineKeyboardMarkup.builder().keyboardRow(viewRow).build();
-        }
-
-        if (p.getStatus() == ProjectStatus.ACTIVE || p.getStatus() == ProjectStatus.ON_HOLD) {
-            viewRow.add(button(p.isAtRiskManual() ? "✅ Clear risk" : "⚠️ Flag risk", "risk", p));
+            return kb.build();
         }
 
         InlineKeyboardRow manageRow = new InlineKeyboardRow();
         manageRow.add(button("✏️ Edit", "edit", p));
-        if (p.getStatus() == ProjectStatus.ACTIVE || p.getStatus() == ProjectStatus.ON_HOLD) {
+        boolean open = p.getStatus() == ProjectStatus.ACTIVE || p.getStatus() == ProjectStatus.ON_HOLD;
+        if (open) {
             manageRow.add(button("✅ Close", "close", p));
         }
         manageRow.add(button("🗄 Archive", "archive", p));
+        kb.keyboardRow(manageRow);
 
-        return InlineKeyboardMarkup.builder()
-                .keyboardRow(viewRow)
-                .keyboardRow(manageRow)
-                .build();
+        if (open) {
+            kb.keyboardRow(new InlineKeyboardRow(
+                    button(p.isAtRiskManual() ? "✅ Clear risk flag" : "🚩 Flag project at risk", "risk", p)));
+        }
+        return kb.build();
+    }
+
+    private InlineKeyboardButton external(String text, String callbackData) {
+        return InlineKeyboardButton.builder().text(text).callbackData(callbackData).build();
     }
 
     public InlineKeyboardMarkup confirmKeyboard(Project p, String confirmAction, String confirmText) {
