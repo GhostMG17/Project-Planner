@@ -54,8 +54,9 @@ public class TaskService {
             throw new BotException(assignee.getShortName() + " is deactivated.");
         }
         if (!projectService.isOnTeam(project, assignee)) {
+            String hint = assignee.getUsername() != null ? "@" + assignee.getUsername() : "@username";
             throw new BotException(assignee.getShortName() + " is not in the " + project.getCode()
-                    + " team. Add them first: /addmember " + project.getCode() + " @username");
+                    + " team. Add them first: /addmember " + project.getCode() + " " + hint);
         }
 
         String title = req.title().trim();

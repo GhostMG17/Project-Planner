@@ -52,6 +52,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByProjectAndStatusAndCompletedAtGreaterThanEqualOrderByCompletedAtDesc(
             Project project, TaskStatus status, Instant since);
 
+    @EntityGraph(attributePaths = {"project", "assignee"})
+    List<Task> findByProjectInAndStatusNot(Collection<Project> projects, TaskStatus status);
+
+    long countByProjectInAndStatusAndCompletedAtGreaterThanEqual(
+            Collection<Project> projects, TaskStatus status, Instant since);
+
     long countByProjectAndStatus(Project project, TaskStatus status);
 
     long countByProjectAndStatusNotAndDeadlineBefore(Project project, TaskStatus status, LocalDate date);

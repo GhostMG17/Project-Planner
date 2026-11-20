@@ -6,23 +6,28 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import uz.mukhammad.projectplanner.common.DateParser;
+import uz.mukhammad.projectplanner.config.AppProperties;
+import uz.mukhammad.projectplanner.config.WorkloadProperties;
 import uz.mukhammad.projectplanner.milestone.records.MilestoneList;
 import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
-import uz.mukhammad.projectplanner.report.records.ProjectReport;
-import uz.mukhammad.projectplanner.report.records.Workload;
+import uz.mukhammad.projectplanner.report.records.*;
 import uz.mukhammad.projectplanner.task.entity.Task;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
 @Component
 @RequiredArgsConstructor
 public class ReportView {
-
+    private final WorkloadProperties workloadProperties;
+    private final AppProperties appProperties;
     public static final String PREFIX = "rpt";
     private static final int MAX_ITEMS = 5;
     private static final DateTimeFormatter SHORT = DateTimeFormatter.ofPattern("dd-MM");
@@ -136,6 +141,120 @@ public class ReportView {
         }
         return kb.build();
     }
+
+
+    public String portfolio(PortfolioReport r) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("🗂 PORTFOLIO OVERVIEW\n")
+                .append("Generated ").append(r.today().format(DateParser.FORMAT))
+                .append(" by ").append(r.generatedBy().getShortName()).append("\n\n");
+
+        if (r.projects().isEmpty()) {
+            sb.append("No active projects.");
+            return sb.toString();
+        }
+
+        sb.append("Active projects: ").append(r.projects().size())
+                .append(" · Open tasks: ").append(r.openTotal())
+                .append("\nDone (7d): ").append(r.completedLastWeek())
+                .append(" · Overdue: ").append(r.overdue().size())
+                .append(" · Blocked: ").append(r.blockedTotal()).append("\n");
+
+        // Projects — как таблица из ТЗ: Project | Progress | Status | Overdue
+        section(sb, "📊 Projects");
+        for (ProjectSummary s : r.projects()) {
+            sb.append(s.health().atRisk() ? "🔴 " : "🟢 ")
+                    .append(s.project().getCode())
+                    .append(" · ").append(s.progress()).append("%")
+                    .append(" · ").append(s.health().atRisk() ? "At risk" : "On track")
+                    .append(" · ").append(s.overdue()).append(" overdue")
+                    .append(" · ").append(s.open()).append(" open")
+                    .append(" · PM ").append(s.project().getProjectManager().getShortName())
+                    .append("\n");
+        }
+
+        // Needs attention
+        List<ProjectSummary> attention = r.projects().stream().filter(ProjectSummary::needsAttention).toList();
+        section(sb, "⚠️ Needs attention (" + attention.size() + ")");
+        if (attention.isEmpty()) {
+            sb.append("All projects on track 🎉\n");
+        }
+        for (ProjectSummary s : attention) {
+            List<String> reasons = new ArrayList<>();
+            if (s.health().atRisk()) {
+                reasons.add("at risk: " + s.health().reason());
+            }
+            if (s.missedMilestones() > 0) {
+                reasons.add(s.missedMilestones() + " missed milestone(s)");
+            }
+            if (s.pastEnd()) {
+                reasons.add("past planned end " + s.project().getPlannedEndDate().format(DateParser.FORMAT));
+            }
+            sb.append("• ").append(s.project().getCode()).append(" — ").append(String.join("; ", reasons)).append("\n");
+        }
+
+        // Overdue
+        section(sb, "🚨 Overdue tasks (" + r.overdue().size() + ")");
+        r.overdue().stream().limit(MAX_ITEMS).forEach(t ->
+                sb.append("• ").append(t.getProject().getCode()).append(" · ").append(t.getKey())
+                        .append(" ").append(t.getTitle())
+                        .append(" — ").append(t.getAssignee().getShortName())
+                        .append(" · ").append(ChronoUnit.DAYS.between(t.getDeadline(), r.today())).append("d late\n"));
+        more(sb, r.overdue().size());
+        if (!r.overdue().isEmpty()) {
+            sb.append("Full list: /overdue\n");
+        }
+
+        // Workload
+        section(sb, "👥 Workload (overloaded at " + workloadProperties.overloadThreshold() + "+ open)");
+        if (r.workload().isEmpty()) {
+            sb.append("Nobody has open tasks.\n");
+        }
+        for (Workload w : r.workload()) {
+            sb.append("• ").append(w.user().getShortName()).append(" — ").append(w.open()).append(" open");
+            if (w.overdue() > 0) {
+                sb.append(", ").append(w.overdue()).append(" overdue");
+            }
+            if (w.overloaded()) {
+                sb.append(" ⚠️ overloaded");
+            }
+            sb.append("\n");
+        }
+
+        // Risks
+        section(sb, "⚠️ Key risks (High/Critical: " + r.keyRisks().size() + ", all open: " + r.openRisksTotal() + ")");
+        if (r.keyRisks().isEmpty()) {
+            sb.append("No high or critical risks.\n");
+        }
+        r.keyRisks().stream().limit(MAX_ITEMS).forEach(risk ->
+                sb.append("• ").append(risk.getSeverity().getIcon()).append(" ")
+                        .append(risk.getProject().getCode()).append(": ").append(risk.getDescription())
+                        .append(" (").append(risk.getOwner().getShortName()).append(")\n"));
+        more(sb, r.keyRisks().size());
+
+        // PM reporting compliance
+        section(sb, "🧑‍💼 PM reporting (last 7 days)");
+        for (PmCompliance c : r.pmCompliance()) {
+            sb.append("• ").append(c.pm().getShortName()).append(" · ").append(c.project().getCode())
+                    .append(" — ")
+                    .append(c.lastReport() == null ? "no reports ⚠️"
+                            : "report " + ago(c.lastReport(), r.today()) + (c.compliant() ? " ✅" : " ⚠️"))
+                    .append(" · activity ")
+                    .append(c.lastActivity() == null ? "none" : ago(c.lastActivity(), r.today()))
+                    .append("\n");
+        }
+
+        return sb.toString();
+    }
+
+    /** "today", "1d ago", "5d ago" */
+    private String ago(Instant moment, LocalDate today) {
+        LocalDate date = LocalDate.ofInstant(moment, appTimezone());
+        long days = ChronoUnit.DAYS.between(date, today);
+        return days == 0 ? "today" : days + "d ago";
+    }
+
+    private ZoneId appTimezone() { return appProperties.timezone(); }
 
     // ---------- helpers ----------
 

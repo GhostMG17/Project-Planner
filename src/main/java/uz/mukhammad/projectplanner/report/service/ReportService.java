@@ -12,8 +12,10 @@ import uz.mukhammad.projectplanner.milestone.service.MilestoneService;
 import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
 import uz.mukhammad.projectplanner.project.service.ProjectService;
+import uz.mukhammad.projectplanner.report.entity.ReportLog;
 import uz.mukhammad.projectplanner.report.records.ProjectReport;
 import uz.mukhammad.projectplanner.report.records.Workload;
+import uz.mukhammad.projectplanner.report.repository.ReportLogRepository;
 import uz.mukhammad.projectplanner.risk.service.ProjectHealthService;
 import uz.mukhammad.projectplanner.risk.service.RiskService;
 import uz.mukhammad.projectplanner.task.entity.Task;
@@ -37,22 +39,24 @@ import java.util.Map;
 public class ReportService {
 
     private final ProjectService projectService;
-    private final TaskRepository taskRepository;
     private final RiskService riskService;
     private final MilestoneService milestoneService;
     private final ProgressService progressService;
     private final ProjectHealthService healthService;
     private final AppProperties appProperties;
     private final WorkloadProperties workloadProperties;
+    private final TaskRepository taskRepository;
+    private final ReportLogRepository reportLogRepository;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ProjectReport projectReport(User actor, Long projectId) {
         Project p = projectService.getById(projectId);
         projectService.requireCanManage(actor, p);
+        reportLogRepository.save(new ReportLog(p, actor));
         return build(actor, p);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ProjectReport projectReport(User actor, String projectCode) {
         return projectReport(actor, projectService.getByCode(projectCode).getId());
     }
