@@ -78,7 +78,8 @@ public class ProjectView {
 
         if (open) {
             kb.keyboardRow(new InlineKeyboardRow(
-                    button(p.isAtRiskManual() ? "✅ Clear risk flag" : "🚩 Flag project at risk", "risk", p)));
+                    external("📊 Report", ReportView.PREFIX + ":proj:" + p.getId()),
+                    button(p.isAtRiskManual() ? "✅ Clear risk flag" : "🚩 Flag at risk", "risk", p)));
         }
         return kb.build();
     }

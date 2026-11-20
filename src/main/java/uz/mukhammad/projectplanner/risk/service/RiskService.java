@@ -105,6 +105,11 @@ public class RiskService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<Risk> openRisks(Project project) {
+        return sorted(riskRepository.findByProjectAndStatus(project, RiskStatus.OPEN));
+    }
+
     private List<Risk> sorted(List<Risk> risks) {
         return risks.stream()
                 .sorted(Comparator.comparing(Risk::getSeverity, Comparator.reverseOrder())

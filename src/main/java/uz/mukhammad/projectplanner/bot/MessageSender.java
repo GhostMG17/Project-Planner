@@ -15,12 +15,16 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 import uz.mukhammad.projectplanner.task.enums.FileType;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class MessageSender {
 
     private final TelegramClient telegramClient;
+    private static final int SAFE_LIMIT = 4000;
 
     public boolean send(Long chatId, Integer threadId, String text) {
         return send(chatId, threadId, text, null);
@@ -107,6 +111,39 @@ public class MessageSender {
         } catch (TelegramApiException e) {
             log.error("Failed to send file to chat {}, thread {}", chatId, threadId, e);
         }
+    }
+
+
+    public void replyLong(Message message, String text, InlineKeyboardMarkup keyboardOnLast) {
+        List<String> chunks = split(text);
+        for (int i = 0; i < chunks.size(); i++) {
+            boolean last = i == chunks.size() - 1;
+            reply(message, chunks.get(i), last ? keyboardOnLast : null);
+        }
+    }
+
+    public void sendLong(Long chatId, Integer threadId, String text, InlineKeyboardMarkup keyboardOnLast) {
+        List<String> chunks = split(text);
+        for (int i = 0; i < chunks.size(); i++) {
+            boolean last = i == chunks.size() - 1;
+            send(chatId, threadId, chunks.get(i), last ? keyboardOnLast : null);
+        }
+    }
+
+    private List<String> split(String text) {
+        List<String> chunks = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (String line : text.split("\n", -1)) {
+            if (current.length() + line.length() + 1 > SAFE_LIMIT && !current.isEmpty()) {
+                chunks.add(current.toString());
+                current.setLength(0);
+            }
+            current.append(line).append("\n");
+        }
+        if (!current.isEmpty()) {
+            chunks.add(current.toString());
+        }
+        return chunks;
     }
 
 }
