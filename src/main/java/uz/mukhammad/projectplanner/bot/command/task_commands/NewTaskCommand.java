@@ -1,15 +1,14 @@
-package uz.mukhammad.projectplanner.bot.command;
+package uz.mukhammad.projectplanner.bot.command.task_commands;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TaskNotifier;
+import uz.mukhammad.projectplanner.bot.command.CommandHandler;
 import uz.mukhammad.projectplanner.bot.conversation.NewTaskWizard;
-import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.common.DateParser;
-import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.task.record.CreateTaskRequest;
 import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.enums.TaskPriority;

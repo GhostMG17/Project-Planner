@@ -147,7 +147,7 @@ public class ReportView {
         StringBuilder sb = new StringBuilder();
         sb.append("🗂 PORTFOLIO OVERVIEW\n")
                 .append("Generated ").append(r.today().format(DateParser.FORMAT))
-                .append(" by ").append(r.generatedBy().getShortName()).append("\n\n");
+                .append(" by ").append(r.generatedBy() != null ? r.generatedBy().getShortName() : "bot").append("\n\n");
 
         if (r.projects().isEmpty()) {
             sb.append("No active projects.");

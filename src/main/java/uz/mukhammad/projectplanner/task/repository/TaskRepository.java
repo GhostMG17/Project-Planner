@@ -55,6 +55,10 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     @EntityGraph(attributePaths = {"project", "assignee"})
     List<Task> findByProjectInAndStatusNot(Collection<Project> projects, TaskStatus status);
 
+    @EntityGraph(attributePaths = {"project", "assignee"})
+    List<Task> findByProjectInAndStatusAndCompletedAtGreaterThanEqualOrderByCompletedAtDesc(
+            Collection<Project> projects, TaskStatus status, Instant since);
+
     long countByProjectInAndStatusAndCompletedAtGreaterThanEqual(
             Collection<Project> projects, TaskStatus status, Instant since);
 

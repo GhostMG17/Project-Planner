@@ -1,9 +1,10 @@
-package uz.mukhammad.projectplanner.bot.command;
+package uz.mukhammad.projectplanner.bot.command.task_commands;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
+import uz.mukhammad.projectplanner.bot.command.CommandHandler;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.common.CommandArgs;
 import uz.mukhammad.projectplanner.task.entity.Task;

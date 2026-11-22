@@ -1,36 +1,41 @@
-package uz.mukhammad.projectplanner.bot.command;
+package uz.mukhammad.projectplanner.bot.command.task_commands;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
+import uz.mukhammad.projectplanner.bot.command.CommandHandler;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
-import uz.mukhammad.projectplanner.common.CommandArgs;
 import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.service.TaskService;
 import uz.mukhammad.projectplanner.user.AccessService;
 import uz.mukhammad.projectplanner.user.User;
 
+import java.util.List;
+
 @Component
 @RequiredArgsConstructor
-public class UpdateTaskCommand implements CommandHandler {
+public class MyTasksCommand implements CommandHandler {
 
     private final AccessService accessService;
     private final TaskService taskService;
     private final TaskView taskView;
     private final MessageSender messageSender;
 
-    @Override public String command() { return "/updatetask"; }
-    @Override public String description() { return "Update a task: /updatetask TASK-001"; }
+    @Override public String command() { return "/mytasks"; }
+    @Override public String description() { return "View personal tasks"; }
 
     @Override
     public void handle(Message message) {
-        User actor = accessService.requireUser(message.getFrom().getId());
-        String[] args = CommandArgs.parse(message, 1, "Usage: /updatetask TASK-001");
+        User user = accessService.requireUser(message.getFrom().getId());
+        List<Task> tasks = taskService.findMyOpenTasks(user);
 
-        Task found = taskService.getForViewByKey(actor, args[0]);
-        Task t = taskService.prepareEditMenu(actor, found.getId());
+        if (tasks.isEmpty()) {
+            messageSender.reply(message, "🎉 You have no open tasks.");
+            return;
+        }
         messageSender.reply(message,
-                "✏️ What do you want to change in " + t.getKey() + "?", taskView.editMenuKeyboard(t));
+                taskView.list("📋 My open tasks (" + tasks.size() + ")", tasks),
+                taskView.openButtons(tasks));
     }
 }

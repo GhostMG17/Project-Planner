@@ -1,4 +1,4 @@
-package uz.mukhammad.projectplanner.bot.command;
+package uz.mukhammad.projectplanner.bot.command.task_commands;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -6,6 +6,7 @@ import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TaskNotifier;
+import uz.mukhammad.projectplanner.bot.command.CallbackHandler;
 import uz.mukhammad.projectplanner.bot.conversation.*;
 import uz.mukhammad.projectplanner.bot.view.TaskView;
 import uz.mukhammad.projectplanner.common.BotException;

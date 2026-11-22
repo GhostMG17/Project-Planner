@@ -46,6 +46,13 @@ public class NotificationService {
                 () -> messageSender.send(user.getTelegramId(), null, text, keyboard));
     }
 
+    public boolean notifyDashboard(NotificationTrigger trigger, String dedupKey, Long chatId,
+                                   Integer threadId, String text) {
+        return deliver(dedupKey,
+                () -> new Notification(trigger, NotificationChannel.TOPIC, null, null, null, dedupKey),
+                () -> messageSender.sendLong(chatId, threadId, text, null));
+    }
+
     private boolean deliver(String dedupKey, Supplier<Notification> factory, BooleanSupplier sender) {
         Optional<Notification> existing = repository.findByDedupKey(dedupKey);
         if (existing.isPresent() && !existing.get().shouldSend()) {

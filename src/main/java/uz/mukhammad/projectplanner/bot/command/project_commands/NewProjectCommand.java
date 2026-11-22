@@ -1,9 +1,10 @@
-package uz.mukhammad.projectplanner.bot.command;
+package uz.mukhammad.projectplanner.bot.command.project_commands;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
+import uz.mukhammad.projectplanner.bot.command.CommandHandler;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.common.DateParser;
 import uz.mukhammad.projectplanner.project.record.CreateProjectRequest;

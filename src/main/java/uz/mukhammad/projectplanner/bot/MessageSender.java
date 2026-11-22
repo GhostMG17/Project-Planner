@@ -122,12 +122,14 @@ public class MessageSender {
         }
     }
 
-    public void sendLong(Long chatId, Integer threadId, String text, InlineKeyboardMarkup keyboardOnLast) {
+    public boolean sendLong(Long chatId, Integer threadId, String text, InlineKeyboardMarkup keyboardOnLast) {
         List<String> chunks = split(text);
+        boolean allSent = true;
         for (int i = 0; i < chunks.size(); i++) {
             boolean last = i == chunks.size() - 1;
-            send(chatId, threadId, chunks.get(i), last ? keyboardOnLast : null);
+            allSent &= send(chatId, threadId, chunks.get(i), last ? keyboardOnLast : null);
         }
+        return allSent;
     }
 
     private List<String> split(String text) {

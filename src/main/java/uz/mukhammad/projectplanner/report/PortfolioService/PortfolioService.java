@@ -59,7 +59,15 @@ public class PortfolioService {
     @Transactional(readOnly = true)
     public PortfolioReport build(User actor) {
         accessService.requireRole(actor, Role.ADMIN, Role.PORTFOLIO_LEAD);
+        return compute(actor);
+    }
 
+    @Transactional(readOnly = true)
+    public PortfolioReport buildSystem() {
+        return compute(null);
+    }
+
+    private PortfolioReport compute(User generatedBy) {
         ZoneId zone = appProperties.timezone();
         LocalDate today = LocalDate.now(zone);
         Instant weekAgo = today.minusDays(COMPLIANCE_DAYS).atStartOfDay(zone).toInstant();
@@ -67,7 +75,7 @@ public class PortfolioService {
         List<Project> projects = projectRepository.findByStatusIn(
                 List.of(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD));
         if (projects.isEmpty()) {
-            return new PortfolioReport(actor, today, List.of(), 0, 0, 0,
+            return new PortfolioReport(generatedBy, today, List.of(), 0, 0, 0,
                     List.of(), List.of(), List.of(), 0, List.of());
         }
 
@@ -124,7 +132,7 @@ public class PortfolioService {
                         .thenComparing(c -> c.project().getCode()))
                 .toList();
 
-        return new PortfolioReport(actor, today, summaries, open.size(), completedLastWeek, blocked,
+        return new PortfolioReport(generatedBy, today, summaries, open.size(), completedLastWeek, blocked,
                 overdue, workload, keyRisks, openRisks.size(), compliance);
     }
 }
