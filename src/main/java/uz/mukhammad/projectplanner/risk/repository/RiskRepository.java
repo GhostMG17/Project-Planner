@@ -20,4 +20,7 @@ public interface RiskRepository extends JpaRepository<Risk, Long> {
 
     @EntityGraph(attributePaths = {"owner", "project", "project.projectManager"})
     Optional<Risk> findWithDetailsById(Long id);
+
+    @EntityGraph(attributePaths = "owner")
+    List<Risk> findByProjectOrderByCreatedAtAsc(Project project);
 }

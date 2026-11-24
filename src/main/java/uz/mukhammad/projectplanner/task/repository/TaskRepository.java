@@ -59,6 +59,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByProjectInAndStatusAndCompletedAtGreaterThanEqualOrderByCompletedAtDesc(
             Collection<Project> projects, TaskStatus status, Instant since);
 
+    @EntityGraph(attributePaths = "assignee")
+    List<Task> findByProjectOrderByNumberAsc(Project project);
+
     long countByProjectInAndStatusAndCompletedAtGreaterThanEqual(
             Collection<Project> projects, TaskStatus status, Instant since);
 

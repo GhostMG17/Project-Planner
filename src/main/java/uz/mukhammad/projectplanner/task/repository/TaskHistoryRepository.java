@@ -16,6 +16,9 @@ public interface TaskHistoryRepository extends JpaRepository<TaskHistory, Long> 
     @EntityGraph(attributePaths = "changedBy")
     List<TaskHistory> findTop20ByTaskOrderByChangedAtDescIdDesc(Task task);
 
+    @EntityGraph(attributePaths = {"task", "changedBy"})
+    List<TaskHistory> findByTask_ProjectOrderByChangedAtAscIdAsc(Project project);
+
     @Query("select max(h.changedAt) from TaskHistory h where h.task.project = :project")
     Instant lastActivity(@Param("project") Project project);
 }

@@ -13,8 +13,10 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import uz.mukhammad.projectplanner.export.records.ExportFile;
 import uz.mukhammad.projectplanner.task.enums.FileType;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -130,6 +132,24 @@ public class MessageSender {
             allSent &= send(chatId, threadId, chunks.get(i), last ? keyboardOnLast : null);
         }
         return allSent;
+    }
+
+    public void sendDocument(Long chatId, Integer threadId, ExportFile file, String caption) {
+        try {
+            telegramClient.execute(SendDocument.builder()
+                    .chatId(chatId)
+                    .messageThreadId(threadId)
+                    .document(new InputFile(new ByteArrayInputStream(file.content()), file.fileName()))
+                    .caption(caption)
+                    .build());
+        } catch (TelegramApiException e) {
+            log.error("Failed to send document {} to chat {}", file.fileName(), chatId, e);
+        }
+    }
+
+    public void replyDocument(Message message, ExportFile file, String caption) {
+        Integer threadId = message.isTopicMessage() ? message.getMessageThreadId() : null;
+        sendDocument(message.getChatId(), threadId, file, caption);
     }
 
     private List<String> split(String text) {
