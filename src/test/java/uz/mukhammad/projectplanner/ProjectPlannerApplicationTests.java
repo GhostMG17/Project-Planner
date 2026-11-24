@@ -1,13 +1,10 @@
 package uz.mukhammad.projectplanner;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class ProjectPlannerApplicationTests {
+class ProjectPlannerApplicationTests extends IntegrationTest {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void contextLoads() {
+    }
 }
