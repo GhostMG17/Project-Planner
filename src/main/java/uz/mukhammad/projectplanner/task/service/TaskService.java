@@ -238,14 +238,14 @@ public class TaskService {
                 oldValue = task.getTitle();
                 newValue = value;
                 task.setTitle(value);
-                record(task, actor, ChangeType.TITLE, null, null, null);
+                record(task, actor, ChangeType.TITLE, oldValue, newValue, null);
             }
             case DESCRIPTION -> {
                 String description = value.equals("-") ? null : requireMaxLength(value, 2000, "Description");
                 oldValue = task.getDescription();
                 newValue = description;
                 task.setDescription(description);
-                record(task, actor, ChangeType.DESCRIPTION, null, null, null);
+                record(task, actor, ChangeType.DESCRIPTION, shorten(oldValue), shorten(newValue), null);
             }
             case DELIVERABLE -> {
                 requireMaxLength(value, 500, "Deliverable");
@@ -433,6 +433,10 @@ public class TaskService {
             throw new BotException(fieldName + " is too long (max " + max + " characters).");
         }
         return value;
+    }
+
+    private String shorten(String s) {
+        return s == null || s.length() <= 100 ? s : s.substring(0, 97) + "...";
     }
 
 

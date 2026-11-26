@@ -44,7 +44,8 @@ public class TaskView {
         sb.append("\n").append(t.getTitle()).append("\n\n");
         sb.append("Project: ").append(t.getProject().getCode()).append("\n");
         sb.append("Responsible: ").append(projectView.mention(t.getAssignee())).append("\n");
-        sb.append("Deadline: ").append(t.getDeadline().format(DateParser.FORMAT)).append("\n");
+        sb.append("Deadline: ").append(t.getDeadline().format(DateParser.FORMAT))
+                .append(" (start ").append(t.getStartDate().format(DateParser.FORMAT)).append(")\n");
         sb.append("Status: ").append(statusLabel(t.getStatus())).append("\n");
         sb.append("Progress: ").append(progressBar(t.getProgress())).append(" ").append(t.getProgress()).append("%\n");
         sb.append("Deliverable: ").append(t.getDeliverable() != null ? t.getDeliverable() : "⚠️ not set");
@@ -300,18 +301,23 @@ public class TaskView {
     }
 
     private String describe(TaskHistory e) {
+        String change = v(e.getOldValue()) + " → " + v(e.getNewValue());
         return switch (e.getChangeType()) {
             case CREATED -> "🆕 Created" + (e.getComment() != null ? " · " + e.getComment() : "");
             case STATUS -> "Status: " + statusText(e.getOldValue()) + " → " + statusText(e.getNewValue());
-            case PROGRESS -> "Progress: " + e.getOldValue() + " → " + e.getNewValue();
-            case ASSIGNEE -> "Responsible: " + e.getOldValue() + " → " + e.getNewValue();
-            case DEADLINE -> "Deadline: " + e.getOldValue() + " → " + e.getNewValue();
-            case PRIORITY -> "Priority: " + e.getOldValue() + " → " + e.getNewValue();
-            case TITLE -> "Title changed";
-            case DESCRIPTION -> "Description changed";
-            case DELIVERABLE -> "Deliverable: " + e.getOldValue() + " → " + e.getNewValue();
-            case START_DATE -> "Start date: " + e.getOldValue() + " → " + e.getNewValue();
+            case PROGRESS -> "Progress: " + change;
+            case ASSIGNEE -> "Responsible: " + change;
+            case DEADLINE -> "Deadline: " + change;
+            case PRIORITY -> "Priority: " + change;
+            case TITLE -> e.getNewValue() == null ? "Title changed" : "Title: " + change;
+            case DESCRIPTION -> "Description updated";
+            case DELIVERABLE -> "Deliverable: " + change;
+            case START_DATE -> "Start date: " + change;
         };
+    }
+
+    public static String v(String value) {
+        return value == null || value.isBlank() ? "—" : value;
     }
 
     private String statusText(String raw) {

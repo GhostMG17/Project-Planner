@@ -26,7 +26,9 @@ public class ExportCommand implements CommandHandler {
     private final MessageSender messageSender;
 
     @Override public String command() { return "/export"; }
-    @Override public String description() { return "Excel export: /export CODE (project) or /export (portfolio)"; }
+    @Override public String description() {
+        return "Excel export: /export CODE (project), /export (portfolio — Portfolio Lead/Admin)";
+    }
 
     @Override
     public Set<Role> visibleTo() {

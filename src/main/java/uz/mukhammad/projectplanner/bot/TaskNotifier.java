@@ -24,13 +24,13 @@ public class TaskNotifier {
         Project p = t.getProject();
 
         String text = switch (t.getStatus()) {
-            case COMPLETED -> "✅ " + t.getKey() + " completed by " + actor.getDisplayName()
+            case COMPLETED -> "✅ " + t.getKey() + " completed by " + actor.getShortName()
                     + "\n" + t.getTitle();
-            case BLOCKED -> "⛔ " + t.getKey() + " is BLOCKED by " + actor.getDisplayName()
+            case BLOCKED -> "⛔ " + t.getKey() + " is BLOCKED by " + actor.getShortName()
                     + "\n" + t.getTitle() + "\nReason: " + t.getBlockedReason();
             default -> "🔄 " + t.getKey() + ": " + taskView.statusLabel(change.oldStatus())
                     + " → " + taskView.statusLabel(t.getStatus())
-                    + " (by " + actor.getDisplayName() + ")\n" + t.getTitle();
+                    + " (by " + actor.getShortName() + ")\n" + t.getTitle();
         };
 
         messageSender.send(p.getTelegramChatId(), p.getTelegramThreadId(), text);
@@ -50,7 +50,8 @@ public class TaskNotifier {
     public void fieldChanged(FieldChange change, String label, User actor) {
         Task t = change.task();
         Project p = t.getProject();
-        String text = "✏️ " + t.getKey() + ": " + label + " " + change.oldValue() + " → " + change.newValue()
+        String text = "✏️ " + t.getKey() + ": " + label + " "
+                + TaskView.v(change.oldValue()) + " → " + TaskView.v(change.newValue())
                 + " (by " + actor.getShortName() + ")\n" + t.getTitle();
 
         messageSender.send(p.getTelegramChatId(), p.getTelegramThreadId(), text);
@@ -73,7 +74,7 @@ public class TaskNotifier {
 
         if (!newA.getId().equals(actor.getId())) {
             messageSender.send(newA.getTelegramId(), null,
-                    "📬 Task assigned to you by " + actor.getDisplayName() + "\n\n" + taskView.card(t),
+                    "📬 Task assigned to you by " + actor.getShortName() + "\n\n" + taskView.card(t),
                     taskView.keyboard(t));
         }
         if (!oldA.getId().equals(actor.getId())) {
@@ -113,7 +114,7 @@ public class TaskNotifier {
         User assignee = task.getAssignee();
         if (!assignee.getId().equals(actor.getId())) {
             messageSender.send(assignee.getTelegramId(), null,
-                    "📬 New task assigned to you by " + actor.getDisplayName() + "\n\n" + card,
+                    "📬 New task assigned to you by " + actor.getShortName() + "\n\n" + card,
                     taskView.keyboard(task));
         }
     }
