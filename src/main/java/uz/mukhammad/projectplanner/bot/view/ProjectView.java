@@ -5,9 +5,11 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMa
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import uz.mukhammad.projectplanner.common.DateParser;
+import uz.mukhammad.projectplanner.project.ProjectSummaryService;
 import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.enums.ProjectField;
 import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
+import uz.mukhammad.projectplanner.project.record.ProjectSummary;
 import uz.mukhammad.projectplanner.project.record.ProjectTeam;
 import uz.mukhammad.projectplanner.risk.records.ProjectHealth;
 import uz.mukhammad.projectplanner.risk.service.ProjectHealthService;
@@ -18,38 +20,58 @@ import java.util.List;
 
 @Component
 public class ProjectView {
-
+    public static final String PREFIX = "prj";
     private final ProgressService progressService;
     private final ProjectHealthService projectHealthService;
-    public static final String PREFIX = "prj";
+    private final ProjectSummaryService projectSummaryService;
 
-    public ProjectView(ProgressService progressService, ProjectHealthService projectHealthService) {
+    public ProjectView(ProgressService progressService,
+                       ProjectHealthService projectHealthService,
+                       ProjectSummaryService projectSummaryService) {
         this.progressService = progressService;
         this.projectHealthService = projectHealthService;
+        this.projectSummaryService = projectSummaryService;
     }
 
     public String card(Project p) {
         User pm = p.getProjectManager();
+        ProjectSummary s = projectSummaryService.summarize(p);
+        boolean open = p.getStatus() == ProjectStatus.ACTIVE || p.getStatus() == ProjectStatus.ON_HOLD;
+
         StringBuilder sb = new StringBuilder();
         sb.append("📁 ").append(p.getCode()).append(" · ").append(p.getName()).append("\n\n");
         sb.append("Client: ").append(p.getClient()).append("\n");
         sb.append("PM: ").append(mention(pm)).append("\n");
+        sb.append("Team: ").append(s.members()).append(s.members() == 1 ? " member" : " members").append("\n");
         sb.append("Period: ").append(p.getStartDate().format(DateParser.FORMAT))
                 .append(" → ").append(p.getPlannedEndDate().format(DateParser.FORMAT)).append("\n");
         sb.append("Status: ").append(p.getStatus()).append("\n");
         sb.append("Progress: ").append(progressService.progressOf(p)).append("%");
-        if (p.getStatus() == ProjectStatus.ACTIVE || p.getStatus() == ProjectStatus.ON_HOLD) {
+        if (open) {
             ProjectHealth h = projectHealthService.assess(p);
             sb.append("\nHealth: ").append(h.label());
             if (h.atRisk()) {
                 sb.append(" (").append(h.reason()).append(")");
             }
         }
+        sb.append("\nMilestones: ").append(s.milestonesDone()).append("/").append(s.milestonesTotal()).append(" done");
+        sb.append("\nOpen risks: ");
+        if (s.openRisks() == 0) {
+            sb.append("none");
+        } else {
+            sb.append(s.openRisks());
+            if (s.highRisks() > 0) {
+                sb.append(" (High/Critical: ").append(s.highRisks()).append(")");
+            }
+        }
+
         if (p.getDescription() != null) {
             sb.append("\n\n📝 ").append(p.getDescription());
         }
         if (p.getKeyDeliverables() != null) {
             sb.append("\n\n🎯 Key deliverables:\n").append(p.getKeyDeliverables());
+        } else if (open) {
+            sb.append("\n\n🎯 Key deliverables: not set (Edit → Key deliverables)");
         }
         return sb.toString();
     }

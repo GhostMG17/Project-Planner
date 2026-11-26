@@ -14,6 +14,8 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 
     Optional<ProjectMember> findByProjectAndUser(Project project, User user);
 
+    long countByProjectId(Long projectId);
+
     @EntityGraph(attributePaths = "user")
     List<ProjectMember> findByProjectOrderByAddedAtAsc(Project project);
 }

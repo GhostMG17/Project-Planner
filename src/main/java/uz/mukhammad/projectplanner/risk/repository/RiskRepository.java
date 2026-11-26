@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.risk.entity.Risk;
+import uz.mukhammad.projectplanner.risk.enums.RiskSeverity;
 import uz.mukhammad.projectplanner.risk.enums.RiskStatus;
 
 import java.util.Collection;
@@ -23,4 +24,7 @@ public interface RiskRepository extends JpaRepository<Risk, Long> {
 
     @EntityGraph(attributePaths = "owner")
     List<Risk> findByProjectOrderByCreatedAtAsc(Project project);
+
+    long countByProjectIdAndStatus(Long projectId, RiskStatus status);
+    long countByProjectIdAndStatusAndSeverityIn(Long projectId, RiskStatus status, Collection<RiskSeverity> severities);
 }
