@@ -12,7 +12,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "telegram.bot.polling-enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "telegram.bot.mode", havingValue = "polling", matchIfMissing = true)
 public class BotRegistrar {
     private final TelegramBotsLongPollingApplication botsApplication;
     private final PlannerBot plannerBot;
