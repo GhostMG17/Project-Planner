@@ -6,9 +6,13 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 import uz.mukhammad.projectplanner.bot.MessageSender;
 import uz.mukhammad.projectplanner.bot.TaskNotifier;
 import uz.mukhammad.projectplanner.bot.command.CommandHandler;
+import uz.mukhammad.projectplanner.bot.conversation.ConversationKey;
+import uz.mukhammad.projectplanner.bot.conversation.ConversationStore;
 import uz.mukhammad.projectplanner.bot.conversation.NewTaskWizard;
+import uz.mukhammad.projectplanner.bot.conversation.TaskEditInputHandler;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.common.DateParser;
+import uz.mukhammad.projectplanner.task.enums.TaskField;
 import uz.mukhammad.projectplanner.task.record.CreateTaskRequest;
 import uz.mukhammad.projectplanner.task.entity.Task;
 import uz.mukhammad.projectplanner.task.enums.TaskPriority;
@@ -24,15 +28,16 @@ import java.util.Arrays;
 public class NewTaskCommand implements CommandHandler {
 
     private static final String USAGE = """
-            Tip: send /newtask without arguments for a step-by-step form.
-            
-            Usage:
-            /newtask CODE Title @username dd-MM-yyyy [Priority] [| Deliverable]
+        Tip: send /newtask without arguments for a step-by-step form.
 
-            Example:
-            /newtask UTY Prepare financial model @john 15-11-2026 High | Financial model v1
+        Usage:
+        /newtask CODE Title @username dd-MM-yyyy [Priority] [| Deliverable]
 
-            Priority: Low, Medium, High, Critical (default: Medium)""";
+        Example:
+        /newtask UTY Prepare financial model @john 15-11-2026 High | Financial model v1
+
+        If you skip "| Deliverable", the bot will ask for it.
+        Priority: Low, Medium, High, Critical (default: Medium)""";
 
     private final AccessService accessService;
     private final TaskService taskService;
@@ -40,6 +45,7 @@ public class NewTaskCommand implements CommandHandler {
     private final NewTaskWizard newTaskWizard;
     private final MessageSender messageSender;
     private final UserService userService;
+    private final ConversationStore conversationStore;
 
     @Override public String command() { return "/newtask"; }
     @Override public String description() { return "Create a task"; }
@@ -55,7 +61,10 @@ public class NewTaskCommand implements CommandHandler {
         }
 
         String[] mainAndDeliverable = cmdAndArgs[1].split("\\|", 2);
-        String deliverable = mainAndDeliverable.length == 2 ? mainAndDeliverable[1] : null;
+        String deliverable = mainAndDeliverable.length == 2 ? mainAndDeliverable[1].trim() : "";
+        if (deliverable.isEmpty()) {
+            deliverable = null;
+        }
         String[] t = mainAndDeliverable[0].trim().split("\\s+");
 
         int at = -1;
@@ -81,6 +90,19 @@ public class NewTaskCommand implements CommandHandler {
 
         Task task = taskService.createTask(actor, request);
         taskNotifier.taskCreated(task, actor);
+
+        if (task.getDeliverable() == null) {
+            conversationStore.start(
+                    new ConversationKey(message.getChatId(), message.getFrom().getId()),
+                    TaskEditInputHandler.NAME,
+                    TaskField.DELIVERABLE.name(),
+                    task.getId());
+            messageSender.reply(message, "✅ " + task.getKey() + " created.\n\n"
+                    + "🎯 What is the expected output?\n"
+                    + "Example: Financial model v1\n\n"
+                    + "Send /cancel to leave it empty.");
+            return;
+        }
         messageSender.reply(message, "✅ " + task.getKey() + " created.");
     }
 }

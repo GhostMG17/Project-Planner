@@ -43,8 +43,8 @@ public class TaskEditInputHandler implements InputHandler {
         messageSender.reply(message, "✅ " + field.getLabel() + " updated.\n\n" + taskView.card(t),
                 taskView.keyboard(t));
 
-        if (field == TaskField.DEADLINE) {
-            taskNotifier.fieldChanged(change, "Deadline", actor);
+        if (field == TaskField.DEADLINE || field == TaskField.DELIVERABLE) {
+            taskNotifier.fieldChanged(change, field.getLabel(), actor);
         }
     }
 }
