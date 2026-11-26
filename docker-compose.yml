@@ -1,7 +1,8 @@
 services:
-  postgres:
+  db:
     image: postgres:16
     container_name: planner-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: planner
       POSTGRES_USER: ${DB_USERNAME}
@@ -11,7 +12,27 @@ services:
       - "${DB_PORT:-5434}:5432"
     volumes:
       - planner-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d planner"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    container_name: planner-app
     restart: unless-stopped
+    profiles: ["app"]
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - planner-logs:/app/logs
 
 volumes:
   planner-db-data:
+  planner-logs:
