@@ -6,10 +6,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uz.mukhammad.projectplanner.common.BotException;
 import uz.mukhammad.projectplanner.config.AppProperties;
+import uz.mukhammad.projectplanner.project.entity.Project;
+import uz.mukhammad.projectplanner.project.enums.ProjectStatus;
+import uz.mukhammad.projectplanner.project.repository.ProjectRepository;
 
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -18,6 +23,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final AppProperties appProperties;
+    private final ProjectRepository projectRepository;
 
     @Transactional
     public RegistrationResult registerOrUpdate(Long telegramId, String username,
@@ -66,6 +72,16 @@ public class UserService {
 
         if (target.getId().equals(actor.getId())) {
             throw new BotException("You can't change your own role.");
+        }
+
+        if (newRole == Role.TEAM_MEMBER) {
+            List<Project> managed = projectRepository.findByProjectManagerIdAndStatusIn(
+                    target.getId(), EnumSet.of(ProjectStatus.ACTIVE, ProjectStatus.ON_HOLD));
+            if (!managed.isEmpty()) {
+                String codes = managed.stream().map(Project::getCode).collect(Collectors.joining(", "));
+                throw new BotException("@" + target.getUsername() + " is PM of active project(s): " + codes + ".\n"
+                        + "Change the PM first: /setpm " + managed.getFirst().getCode() + " @username");
+            }
         }
 
         Role oldRole = target.getRole();

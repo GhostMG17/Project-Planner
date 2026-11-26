@@ -44,4 +44,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     @Transactional
     @Query("update Project p set p.atRiskSince = :since where p.id = :id")
     void updateAtRiskSince(@Param("id") Long id, @Param("since") Instant since);
+
+    List<Project> findByProjectManagerIdAndStatusIn(Long projectManagerId, Collection<ProjectStatus> statuses);
 }

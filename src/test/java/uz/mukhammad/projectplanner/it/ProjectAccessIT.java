@@ -10,15 +10,16 @@ import uz.mukhammad.projectplanner.project.entity.Project;
 import uz.mukhammad.projectplanner.project.service.ProjectService;
 import uz.mukhammad.projectplanner.user.Role;
 import uz.mukhammad.projectplanner.user.User;
+import uz.mukhammad.projectplanner.user.UserService;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
-
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ProjectAccessIT extends IntegrationTest {
 
     @Autowired private TestFixtures f;
     @Autowired private ProjectService projectService;
+    @Autowired private UserService userService;
 
     private User admin;
     private User pm;
@@ -74,5 +75,12 @@ class ProjectAccessIT extends IntegrationTest {
         assertThatThrownBy(() -> projectService.changeProjectManager(admin, "ACC", "@member"))
                 .isInstanceOf(BotException.class)
                 .hasMessageContaining("can't be a Project Manager");
+    }
+
+    @Test
+    void cannotDemotePmOfActiveProject() {
+        assertThatThrownBy(() -> userService.changeRole(admin, "@pm", Role.TEAM_MEMBER))
+                .isInstanceOf(BotException.class)
+                .hasMessageContaining("ACC");
     }
 }
